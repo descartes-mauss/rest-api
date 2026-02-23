@@ -40,13 +40,16 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Repository & Structure\*\*
+## Repository & Structure
 
 - Keep the existing layout; follow these rules when adding files:
-  - `database/` holds DB sessions, models, and migrations helpers.
-  - `routes/` holds API routers grouped by domain.
-  - `public_models/` and `tenant_models/` contain SQLModel/Pydantic models.
-  - Keep small modules and functions; prefer composition over large classes.
+  |- `database/`: holds DB sessions, models, and migrations helpers.
+  |- `public_models/`: public schema SQLModel/Pydantic models.
+  |- `tenant_models/`: tenant schema SQLModel/Pydantic models.
+  |- `repositories/`: data access classes grouped by domain.
+  |- `routes/` holds API routers grouped by domain/resource.
+  |- `services/` service access and business logic layer grouped by domain.
+- Keep small modules and functions; prefer composition over large classes.
 
 ______________________________________________________________________
 
@@ -81,7 +84,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## FastAPI Best Practices\*\*
+## FastAPI Best Practices
 
 - Keep routers thin: routers should orchestrate application logic, not
   implement business rules — extract services/helpers.
@@ -91,7 +94,7 @@ ______________________________________________________________________
 - Validate request and response models explicitly using Pydantic/SQLModel.
 - Return typed responses and document response models in route decorators.
 
-## Security\*\*
+## Security
 
 - Centralize JWT/auth logic (see `jwt_validator.py`).
 - Do not store secrets in source; use environment variables and loading via
@@ -99,7 +102,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Database & Migrations\*\*
+## Database & Migrations
 
 - Use Alembic for migrations. Keep migration files in a `migrations/` folder.
 - Keep DB session creation in a single module (`database/session.py`).
@@ -107,7 +110,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Testing & CI\*\*
+## Testing & CI
 
 - Use `pytest` with `httpx.AsyncClient` for FastAPI integration tests.
 - Keep tests fast and hermetic — mock external APIs using `respx` or `pytest-mock`.
@@ -122,7 +125,7 @@ pytest -q
 
 ______________________________________________________________________
 
-## Pre-commit & Automation\*\*
+## Pre-commit & Automation
 
 - Install `pre-commit` and enable hooks for `ruff`, `black`, `isort`, and
   safety checks for secrets.
@@ -131,7 +134,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Code Review Checklist\*\*
+## Code Review Checklist
 
 - Is the code PEP8-compliant and formatted by `black`?
 - Are types present for public functions and interfaces?
@@ -142,7 +145,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Commit & Branching\*\*
+## Commit & Branching
 
 - Use concise, imperative commit messages.
 - Feature branches named `feature/<short-desc>`; bugfix `fix/<short-desc>`.
