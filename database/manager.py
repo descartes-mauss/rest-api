@@ -1,10 +1,11 @@
 import os
-from typing import Any
+from typing import Any, List
 
 from dotenv import load_dotenv
 from sqlmodel import SQLModel, select
 
 from database.session import DBSession
+from database.tenant_models.models import Topic, Trend
 
 load_dotenv()
 
@@ -38,3 +39,24 @@ def get_by_id(model: type[SQLModel], id: Any, tenant_schema: str | None = None) 
 
     with db.session() as session:
         return session.get(model, id)
+
+
+def get_topics(topic_id: str, tenant_schema: str) -> List[Any]:
+    """Fetch all Topic rows for the given topic."""
+
+    if tenant_schema:
+        with db.tenant_session(tenant_schema) as session:
+            statement = select(Topic).where(Topic.topic_id == topic_id)
+            return session.exec(statement).all()
+
+
+def get_topics_trends(topic_id: str, tenant_schema: str) -> List[Any]:
+    """Fetch all Topic rows for the given topic."""
+
+    if tenant_schema:
+        with db.tenant_session(tenant_schema) as session:
+            statement = select(Topic, Trend).where(
+                Topic.topic_id == topic_id, Trend.ssid == Topic.ssid
+            )
+            results = session.exec(statement).all()
+            return results
