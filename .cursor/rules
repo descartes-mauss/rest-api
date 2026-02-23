@@ -1,0 +1,3 @@
+Never modify files inside `database/models/public/*` and `database/models/tenant/*`.
+Subclass models if needed.
+Treat them as read-only.
