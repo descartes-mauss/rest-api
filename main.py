@@ -20,8 +20,13 @@ def read_root():
 
 
 @app.get("/error")
-def base():
-    return JSONResponse(status_code=500, content={"status": "Error endpoint"})
+def error():
+    return JSONResponse(status_code=500, content={"status": "Generic error"})
+
+
+@app.get("/_health")
+def health():
+    return JSONResponse(status_code=200, content={"status": "OK"})
 
 
 app.include_router(client_router)
