@@ -1,0 +1,36 @@
+fail_fast: true
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+    - id: trailing-whitespace
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-json
+    - id: check-added-large-files
+      args: ['--maxkb=1000']
+    - id: check-case-conflict
+    - id: check-merge-conflict
+    - id: debug-statements
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.7.17
+  hooks:
+    - id: mdformat
+      stages: [pre-commit]
+      additional_dependencies:
+        - mdformat-gfm
+- repo: local
+  hooks:
+    - id: black-format
+      name: black-format
+      entry: bash -c "black ."
+      language: python
+- repo: local
+  hooks:
+    - id: isort-format
+      name: isort-format
+      entry: bash -c "isort ."
+      language: python
