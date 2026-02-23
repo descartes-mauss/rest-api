@@ -84,7 +84,7 @@ class Client(SQLModel, table=True):
     company_profile_image_s3_uri: Optional[str] = None
 
 
-class Sow(SQLModel, table=True):
+class PublicSow(SQLModel, table=True):
     __tablename__ = "cs_interface_sow"
     __table_args__ = {"schema": "public"}
 
