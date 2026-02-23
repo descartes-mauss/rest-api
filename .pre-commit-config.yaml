@@ -27,10 +27,16 @@ repos:
     - id: black-format
       name: black-format
       entry: bash -c "black ."
-      language: python
+      language: system
 - repo: local
   hooks:
     - id: isort-format
       name: isort-format
       entry: bash -c "isort ."
-      language: python
+      language: system
+- repo: local
+  hooks:
+    - id: ruff-format
+      name: ruff-format
+      entry: bash -c "ruff check ."
+      language: system

@@ -5,8 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.manager import get_all
-from database.models.public_models import Client
-from database.models.tenant_models import SOW
+from database.models.public.public_models import Client
+from database.models.tenant.tenant_models import SOW
 from jwt_validator import validate_jwt
 
 app = FastAPI()

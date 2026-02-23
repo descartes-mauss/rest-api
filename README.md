@@ -2,11 +2,11 @@
 
 Main REST API for Agentic Experience Project
 
-**Runtime**
+## Runtime
 
 - **Python**: 3.12.0 (see [.tool-versions](.tool-versions))
 
-**Major dependencies**
+## Major dependencies
 
 - **FastAPI**: high-performance ASGI framework for APIs
 - **SQLModel**: ORM / models based on SQLAlchemy and Pydantic
@@ -19,7 +19,8 @@ Main REST API for Agentic Experience Project
 - **psycopg2-binary**: PostgreSQL driver
 - See the full list in [requirements.txt](requirements.txt)
 
-**Setup — manage tool versions with `asdf`**
+## Setup — manage tool versions with `asdf`
+
 Install `asdf` (macOS/Homebrew alternative shown) and the Python plugin:
 
 ```bash
@@ -46,7 +47,7 @@ asdf install python 3.12.0
 asdf global python 3.12.0
 ```
 
-**Create and use a virtual environment**
+## Create and use a virtual environment
 
 ```bash
 # create venv in project
@@ -60,13 +61,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-**Run (development)**
+## Run (development)
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8001
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Notes
+### Notes
 
 - Use the files [.tool-versions](.tool-versions) and [requirements.txt](requirements.txt) for reproducible runtime and dependency lists.
 - On macOS, ensure Command Line Tools are installed for some packages (e.g., `psycopg2-binary` may require build tools in other setups).

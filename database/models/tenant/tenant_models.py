@@ -1,9 +1,6 @@
 from datetime import datetime
-from decimal import Decimal
-from enum import IntEnum
-from typing import List, Optional
+from typing import Optional
 
-from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 

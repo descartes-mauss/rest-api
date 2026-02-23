@@ -1,9 +1,7 @@
 from datetime import datetime
-from enum import Enum, IntEnum
-from typing import List, Optional
-from uuid import UUID, uuid4
+from enum import Enum
+from typing import Optional
 
-from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 
