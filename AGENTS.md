@@ -44,8 +44,9 @@ ______________________________________________________________________
 
 - Keep the existing layout; follow these rules when adding files:
   |- `database/`: holds DB sessions, models, and migrations helpers.
-  |- `public_models/`: public schema SQLModel/Pydantic models.
-  |- `tenant_models/`: tenant schema SQLModel/Pydantic models.
+  |--- `public_models/`: public schema SQLModel/Pydantic models.
+  |--- `tenant_models/`: tenant schema SQLModel/Pydantic models.
+  |--- `schemas/`: DTO Pydantic models for API responses, grouped by domain.
   |- `repositories/`: data access classes grouped by domain.
   |- `routes/` holds API routers grouped by domain/resource.
   |- `services/` service access and business logic layer grouped by domain.

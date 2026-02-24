@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -10,7 +12,7 @@ BEARER_HEADER = HTTPBearer()
 
 def validate_jwt(
     credentials: HTTPAuthorizationCredentials = Depends(BEARER_HEADER),
-):
+) -> Dict[str, Any]:
     """
     Dependency that validates a JWT from `Authorization: Bearer <JWT_TOKEN>`
     """

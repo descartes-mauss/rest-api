@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from typing import Generator
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -11,7 +12,7 @@ class DBSession:
         self.SessionLocal = sessionmaker(bind=self.engine, class_=Session, expire_on_commit=False)
 
     @contextmanager
-    def session(self):
+    def session(self) -> Generator[Session, None, None]:
         session = self.SessionLocal()
         try:
             yield session
@@ -23,14 +24,14 @@ class DBSession:
             session.close()
 
     @contextmanager
-    def tenant_session(self, tenant_schema: str):
+    def tenant_session(self, tenant_schema: str) -> Generator[Session, None, None]:
         """
         Opens a session with the PostgreSQL search_path set
         to the tenant schema + public.
         """
         session = self.SessionLocal()
         try:
-            session.exec(text(f"SET search_path TO {tenant_schema.lower()}, public"))
+            session.exec(text(f"SET search_path TO {tenant_schema.lower()}, public"))  # type: ignore[call-overload]
             yield session
             session.commit()
         except Exception:

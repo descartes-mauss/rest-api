@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -167,7 +167,7 @@ class GrowthOpportunityJobExecution(SQLModel, table=True):
     job_id: UUID = Field(default_factory=uuid4, primary_key=True)
     client_id: int = Field(foreign_key="client.id")
     processing_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
-    steps_status: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    steps_status: Optional[List[dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     geographies: Optional[str] = None
     categories: Optional[str] = None
     topics: Optional[str] = None
@@ -183,7 +183,7 @@ class CompanyProfileFetcherJobExecution(SQLModel, table=True):
     job_id: UUID = Field(default_factory=uuid4, primary_key=True)
     client_id: int = Field(foreign_key="client.id")
     processing_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
-    steps_status: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    steps_status: Optional[List[dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

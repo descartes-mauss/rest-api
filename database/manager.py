@@ -1,10 +1,11 @@
 import os
-from typing import Any, List
+from typing import Any, Type
 
 from dotenv import load_dotenv
-from sqlmodel import SQLModel, select
+from sqlmodel import select
 
 from database.session import DBSession
+from database.shared import SQLModelType
 from database.tenant_models.models import Topic, Trend
 
 load_dotenv()
@@ -20,18 +21,20 @@ db = DBSession(
 )
 
 
-def get_all(model: type[SQLModel], tenant_schema: str | None = None) -> list[Any]:
+def get_all(model: Type[SQLModelType], tenant_schema: str | None = None) -> list[SQLModelType]:
     """Fetch all rows for the given SqlModel `model`."""
     if tenant_schema:
         with db.tenant_session(tenant_schema) as session:
             statement = select(model)
-            return session.exec(statement).all()
+            return list(session.exec(statement).all())
 
     with db.session() as session:
-        return session.exec(select(model)).all()
+        return list(session.exec(select(model)).all())
 
 
-def get_by_id(model: type[SQLModel], id: Any, tenant_schema: str | None = None) -> Any | None:
+def get_by_id(
+    model: Type[SQLModelType], id: Any, tenant_schema: str | None = None
+) -> SQLModelType | None:
     """Fetch a single row by ID for the given SqlModel `model`."""
     if tenant_schema:
         with db.tenant_session(tenant_schema) as session:
@@ -41,16 +44,17 @@ def get_by_id(model: type[SQLModel], id: Any, tenant_schema: str | None = None) 
         return session.get(model, id)
 
 
-def get_topics(topic_id: str, tenant_schema: str) -> List[Any]:
+def get_topics(topic_id: str, tenant_schema: str) -> list[Topic]:
     """Fetch all Topic rows for the given topic."""
 
     if tenant_schema:
         with db.tenant_session(tenant_schema) as session:
             statement = select(Topic).where(Topic.topic_id == topic_id)
-            return session.exec(statement).all()
+            return list(session.exec(statement).all())
+    return []
 
 
-def get_topics_trends(topic_id: str, tenant_schema: str) -> List[Any]:
+def get_topics_trends(topic_id: str, tenant_schema: str) -> list[tuple[Topic, Trend]]:
     """Fetch all Topic rows for the given topic."""
 
     if tenant_schema:
@@ -58,5 +62,5 @@ def get_topics_trends(topic_id: str, tenant_schema: str) -> List[Any]:
             statement = select(Topic, Trend).where(
                 Topic.topic_id == topic_id, Trend.ssid == Topic.ssid
             )
-            results = session.exec(statement).all()
-            return results
+            return list(session.exec(statement).all())
+    return []

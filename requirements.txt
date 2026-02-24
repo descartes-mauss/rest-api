@@ -54,6 +54,8 @@ SQLAlchemy==2.0.45
 sqlmodel==0.0.27
 starlette==0.50.0
 typer==0.20.1
+types-pyasn1==0.6.0.20250914
+types-python-jose==3.5.0.20250531
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.6.2
