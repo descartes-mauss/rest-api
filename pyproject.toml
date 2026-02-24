@@ -27,4 +27,4 @@ plugins = []
 exclude = ["migrations/*", "tests/*"]
 
 [tool.pytest.ini_options]
-# addopts = "--cov-config=.coveragerc --cov-report html"
+addopts = "--cov-config=.coveragerc --cov-report html"

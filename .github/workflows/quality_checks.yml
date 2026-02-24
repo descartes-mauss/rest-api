@@ -1,0 +1,29 @@
+name: Quality Checks
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Analyzing the code with ruff
+        run: |
+          ruff check $(git ls-files "*.py")
+      - name: Analyzing the code with mypy
+        run: |
+          python -m mypy --show-error-context --explicit-package-bases $(git ls-files "*.py")
+      - name: Running unit tests with pytest, generating coverage report
+        run: |
+          python -m pytest --cov-config=.coveragerc --cov-report markdown --cov '.' tests/*.py

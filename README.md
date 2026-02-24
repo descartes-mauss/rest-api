@@ -71,3 +71,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 - Use the files [.tool-versions](.tool-versions) and [requirements.txt](requirements.txt) for reproducible runtime and dependency lists.
 - On macOS, ensure Command Line Tools are installed for some packages (e.g., `psycopg2-binary` may require build tools in other setups).
+
+## Coverage
+
+[See coverage](coverage.md)
