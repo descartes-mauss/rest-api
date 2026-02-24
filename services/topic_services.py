@@ -14,7 +14,7 @@ class TopicService:
     def __init__(self, topic_repository: TopicRepository) -> None:
         self.topic_repository = topic_repository
 
-    def get_all_topics(self, organization_id: str) -> list[Topic]:
+    def get_all_topics(self, organization_id: Optional[str]) -> list[Topic]:
         """List all topics for a given organization."""
         if not organization_id:
             raise HTTPException(
@@ -22,7 +22,9 @@ class TopicService:
             )
         return self.topic_repository.get_all(organization_id)
 
-    def get_topic_by_topic_id(self, organization_id: str, topic_id: str) -> Optional[Topic]:
+    def get_topic_by_topic_id(
+        self, organization_id: Optional[str], topic_id: str
+    ) -> Optional[Topic]:
         if not organization_id:
             raise HTTPException(
                 status_code=400, detail="Authorization token missing tenant schema information."
