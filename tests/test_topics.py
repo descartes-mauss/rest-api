@@ -1,12 +1,28 @@
 import datetime
+from typing import Generator
 
+import pytest
 from fastapi.testclient import TestClient
 
 from database.tenant_models.models import Topic
+from jwt_validator import validate_jwt
 from main import app
-from repositories import topic_repository
+from routes.topic_router import get_topic_service
+from services.topic_services import TopicService
 
-client = TestClient(app)
+
+@pytest.fixture
+def client() -> Generator[TestClient, None, None]:
+
+    def override_validate_jwt() -> dict[str, str]:
+        return {"orgId": "test_schema"}
+
+    app.dependency_overrides[validate_jwt] = override_validate_jwt
+    client = TestClient(app)
+
+    yield client
+
+    app.dependency_overrides = {}
 
 
 def make_topic(topic_id: str = "t1") -> Topic:
@@ -45,11 +61,17 @@ def make_topic(topic_id: str = "t1") -> Topic:
     )
 
 
-def test_list_topics(monkeypatch) -> None:
+def test_list_topics(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     topics = [make_topic("topic-1"), make_topic("topic-2")]
-    monkeypatch.setattr(topic_repository, "get_all", lambda tenant=None: topics)
+
+    class FakeRepo:
+        def get_all(self, tenant_schema):  # type: ignore[no-untyped-def]
+            return topics
+
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics")
+    print(resp.json())
     assert resp.status_code == 200
     data = resp.json()
     assert "topics" in data
@@ -58,9 +80,14 @@ def test_list_topics(monkeypatch) -> None:
     assert data["topics"][0]["topic_id"] == "topic-1"
 
 
-def test_get_topic_found(monkeypatch) -> None:
+def test_get_topic_found(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     t = make_topic("topic-42")
-    monkeypatch.setattr(topic_repository, "get_by_topic_id", lambda topic_id, tenant=None: t)
+
+    class FakeRepo:
+        def get_by_topic_id(self, tenant_schema, topic_id):  # type: ignore[no-untyped-def]
+            return t
+
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-42")
     assert resp.status_code == 200
@@ -69,8 +96,12 @@ def test_get_topic_found(monkeypatch) -> None:
     assert data["topic"]["topic_id"] == "topic-42"
 
 
-def test_get_topic_not_found(monkeypatch) -> None:
-    monkeypatch.setattr(topic_repository, "get_by_topic_id", lambda topic_id, tenant=None: None)
+def test_get_topic_not_found(client: TestClient) -> None:
+    class FakeRepo:
+        def get_by_topic_id(self, tenant_schema: str, topic_id: str):  # type: ignore[no-untyped-def]
+            return None
+
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/does-not-exist")
     assert resp.status_code == 404

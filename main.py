@@ -16,7 +16,6 @@ logger = logging.getLogger("uvicorn.error")
 @app.get("/")
 def read_root() -> JSONResponse:
     clients: list[Client] = get_all(Client)
-    logger.info("Total number of clients %s", len(clients))
     return JSONResponse(status_code=200, content=jsonable_encoder({"clients": clients}))
 
 

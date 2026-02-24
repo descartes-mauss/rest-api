@@ -40,3 +40,9 @@ repos:
       name: ruff-format
       entry: bash -c "ruff check ."
       language: system
+- repo: local
+  hooks:
+    - id: pytest
+      name: pytest
+      entry: bash -c "python -m pytest tests/*.py"
+      language: system
