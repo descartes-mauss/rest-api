@@ -42,6 +42,12 @@ repos:
       language: system
 - repo: local
   hooks:
+    - id: mypy-validations
+      name: mypy-validations
+      entry: bash -c "mypy . --explicit-package-bases"
+      language: system
+- repo: local
+  hooks:
     - id: pytest
       name: pytest
       entry: bash -c "python -m pytest tests/*.py"
