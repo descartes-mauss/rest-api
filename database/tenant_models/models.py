@@ -1,11 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
-from database.tenant_models.enums import ExperimentType
+from database.tenant_models.enums import ExperimentType, MaturityCategory
 
 
 class TenantSow(SQLModel, table=True):
@@ -300,3 +300,175 @@ class GrowthOpportunity2Source(SQLModel, table=True):
     growth_opportunity_source_gosid: Optional[int] = Field(
         default=None, foreign_key="client_interface_growthopportunitysource.gosid"
     )
+
+
+# ---------------------------------------------------------------------------
+# Maturity score models
+# ---------------------------------------------------------------------------
+
+
+class MaturityScore(SQLModel, table=True):
+    __tablename__ = "client_interface_maturityscore"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic_id: Optional[int] = Field(default=None, foreign_key="client_interface_topicmodel.tid")
+    trend_id: Optional[int] = Field(default=None, foreign_key="client_interface_trendmodel.ssid")
+    category: MaturityCategory
+    score: Optional[Decimal] = None
+    threshold: Optional[str] = None
+    rationale: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MaturityScoreSource(SQLModel, table=True):
+    __tablename__ = "client_interface_maturityscoresource"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    maturity_score_id: int = Field(foreign_key="client_interface_maturityscore.id")
+    source_url: str
+    source_title: str = ""
+
+
+class MaturityScoreDelta(SQLModel, table=True):
+    __tablename__ = "client_interface_maturityscoredelta"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    sow_id: int = Field(foreign_key="client_interface_sowmodel.sid")
+    topic_id: Optional[str] = None
+    trend_id: Optional[str] = None
+    category: MaturityCategory
+    absolute_delta: Decimal
+    percentage_delta: Decimal
+    label: str
+    masterfile_version: int
+    for_deletion: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Company models
+# ---------------------------------------------------------------------------
+
+
+class BusinessCategory(SQLModel, table=True):
+    __tablename__ = "client_interface_businesscategory"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    business_category_name: str
+    business_category_description: Optional[str] = None
+
+
+class CustomerSegment(SQLModel, table=True):
+    __tablename__ = "client_interface_customersegment"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    customer_segment_name: str
+    customer_segment_description: Optional[str] = None
+
+
+class Brand(SQLModel, table=True):
+    __tablename__ = "client_interface_brand"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    brand_name: str
+    brand_description: Optional[str] = None
+    brand_purpose: Optional[str] = None
+    brand_mission: Optional[str] = None
+    brand_attributes: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    brand_business_category_id: Optional[int] = Field(
+        default=None, foreign_key="client_interface_businesscategory.id"
+    )
+    brand_country: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+
+
+class ProductLine(SQLModel, table=True):
+    __tablename__ = "client_interface_productline"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    brand_id: int = Field(foreign_key="client_interface_brand.id")
+    product_line_name: str
+    product_line_user_benefit: Optional[str] = None
+    product_line_value_proposition: Optional[str] = None
+
+
+class BrandStrategicFitScore(SQLModel, table=True):
+    __tablename__ = "client_interface_brandstrategicfitscore"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    strategic_fit_score: Optional[float] = None
+    growth_opportunity_id: Optional[str] = None
+    growth_opportunity_geography: Optional[str] = None
+    brand_id: int = Field(foreign_key="client_interface_brand.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    for_deletion: bool = False
+
+
+# ---------------------------------------------------------------------------
+# New growth opportunity models (hierarchical schema)
+# ---------------------------------------------------------------------------
+
+
+class BaseGrowthOpportunity(SQLModel, table=True):
+    __tablename__ = "client_interface_basegrowthopportunitymodel"
+
+    goid: Optional[int] = Field(default=None, primary_key=True)
+    load_date: datetime
+    growth_opportunity_id: str
+    rating: Optional[int] = None
+    currency: str = "USD"
+    for_deletion: bool = False
+
+
+class GrowthOpportunityTopics(SQLModel, table=True):
+    __tablename__ = "client_interface_growthopportunitytopicsmodel"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    goid: int = Field(foreign_key="client_interface_basegrowthopportunitymodel.goid")
+    topic_id: str
+    topic_name: str
+
+
+class GeographyGrowthOpportunity(SQLModel, table=True):
+    __tablename__ = "client_interface_geographygrowthopportunitymodel"
+
+    ggoid: Optional[int] = Field(default=None, primary_key=True)
+    goid: int = Field(foreign_key="client_interface_basegrowthopportunitymodel.goid")
+    name: str
+    geography_id: str
+    geography_name: str
+    description: str
+    customer_need: str
+    growth_space_market_size: Decimal
+    strategic_fit_score: Optional[float] = None
+    ranking_index: Optional[float] = None
+
+
+class Market(SQLModel, table=True):
+    __tablename__ = "client_interface_marketmodel"
+
+    mid: Optional[int] = Field(default=None, primary_key=True)
+    ggoid: int = Field(foreign_key="client_interface_geographygrowthopportunitymodel.ggoid")
+    market: str
+    market_level_market_size: Decimal
+
+
+class Estimator(SQLModel, table=True):
+    __tablename__ = "client_interface_estimatormodel"
+
+    eid: Optional[int] = Field(default=None, primary_key=True)
+    mid: int = Field(foreign_key="client_interface_marketmodel.mid")
+    category: str
+    customer_segment: str
+    customer_segment_description: str
+    customer_segment_occasion: str
+    granular_consumer_need: str
+    potential_customers: int
+    potential_customers_step_by_step_reasoning: Optional[str] = None
+    web_content_customer_estimator: Optional[List[Any]] = Field(
+        default=None, sa_column=Column(JSON)
+    )
+    avr_annual_spend: Decimal
+    avr_annual_spend_step_by_step_reasoning: Optional[str] = None
+    web_content_spend_estimator: Optional[List[Any]] = Field(default=None, sa_column=Column(JSON))
+    customer_segment_market_size: Decimal

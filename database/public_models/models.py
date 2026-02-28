@@ -210,3 +210,47 @@ class GrowthMetric(SQLModel, table=True):
     output_filepath: str
     completed: bool = False
     status: str = Field(default="queued")
+
+
+class CIClient(SQLModel, table=True):
+    """client_interface.Client — the django-tenants TenantMixin model stored in the public schema.
+
+    Used to resolve a user's org_id to their PostgreSQL schema_name.
+    Distinct from cs_interface.Client (the `Client` model above).
+    """
+
+    __tablename__ = "client_interface_client"
+    __table_args__ = {"schema": "public"}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    schema_name: str
+    name: str
+    website: Optional[str] = None
+    created_on: Optional[datetime] = None
+    org_id: str
+    client_status: str = "processing"
+    industry: Optional[Industry] = None
+    display_opportunity_map: bool = True
+
+
+class ClientCompanyProfile(SQLModel, table=True):
+    """Enriched company profile for a tenant, stored in the public schema."""
+
+    __tablename__ = "cs_interface_clientcompanyprofile"
+    __table_args__ = {"schema": "public"}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    client_id: int = Field(foreign_key="client_interface_client.id")
+    company_name: Optional[str] = None
+    brands_count: Optional[int] = None
+    company_purpose: Optional[str] = None
+    company_purpose_implication: Optional[str] = None
+    company_vision: Optional[str] = None
+    company_vision_implication: Optional[str] = None
+    company_mission: Optional[str] = None
+    company_mission_implication: Optional[str] = None
+    company_personality: Optional[List[Any]] = Field(default=None, sa_column=Column(JSON))
+    company_strategic_priorities: Optional[str] = None
+    company_competitors: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
