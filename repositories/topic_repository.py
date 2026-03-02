@@ -4,22 +4,12 @@ This module provides `TopicRepository`, which accepts a DB session provider
 so callers (FastAPI dependencies or tests) can inject the DB object.
 """
 
-from typing import Any, List, Optional, Protocol, cast
+from typing import List, Optional, cast
 
 from sqlmodel import select
 
+from database.db_session_provider import DBSessionProvider
 from database.tenant_models.models import Topic
-
-
-class DBSessionProvider(Protocol):
-    """Protocol describing the DB session provider used by repositories.
-
-    The provider is expected to expose a `tenant_session(schema)` context
-    manager that yields a SQLModel/SQLAlchemy session with `exec` and
-    `get` methods.
-    """
-
-    def tenant_session(self, schema: str) -> Any: ...
 
 
 class TopicRepository:
@@ -65,4 +55,4 @@ class TopicRepository:
             return cast(Optional[Topic], result)
 
 
-__all__ = ["TopicRepository", "DBSessionProvider"]
+__all__ = ["TopicRepository"]

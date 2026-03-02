@@ -29,7 +29,7 @@ def make_topic(topic_id: str = "t1") -> Topic:
     return Topic(
         tid=1,
         sid=10,
-        load_date=datetime.datetime.utcnow(),
+        load_date=datetime.datetime.now(datetime.UTC),
         topic_id=topic_id,
         topic_name="Test Topic",
         topic_status=1,
