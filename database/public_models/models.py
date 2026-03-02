@@ -26,7 +26,7 @@ class PublicModel(SQLModel):
 
 
 class ServiceTier(SQLModel, table=True):
-    __tablename__ = "cs_interface_service_tier"
+    __tablename__ = "cs_interface_servicetier"
     __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -38,7 +38,7 @@ class ServiceTier(SQLModel, table=True):
 
 
 class ServiceFeature(SQLModel, table=True):
-    __tablename__ = "cs_interface_service_feature"
+    __tablename__ = "cs_interface_servicefeature"
     __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -50,7 +50,7 @@ class ServiceFeature(SQLModel, table=True):
 
 
 class TierFeature(SQLModel, table=True):
-    __tablename__ = "cs_interface_tier_feature"
+    __tablename__ = "cs_interface_tierfeature"
     __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)

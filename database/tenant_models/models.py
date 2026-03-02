@@ -145,11 +145,9 @@ class Opportunity(SQLModel, table=True):
     __tablename__ = "client_interface_opportunitymodel"
 
     oid: Optional[int] = Field(default=None, primary_key=True)
-    sow_sid: int = Field(foreign_key="client_interface_sowmodel.sid")
+    sid: int = Field(foreign_key="client_interface_sowmodel.sid")
     opportunity_name: str
     opportunity: int
-    # Topic soft-links as JSON list of topic ids
-    topic_ids: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
     masterfile_version: int
     for_deletion: bool = False
 
