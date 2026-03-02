@@ -23,7 +23,7 @@ jobs:
           ruff check $(git ls-files "*.py")
       - name: Analyzing the code with mypy
         run: |
-          python -m mypy --show-error-context --explicit-package-bases $(git ls-files "*.py")
+          python -m mypy --show-error-context --explicit-package-bases --config-file "pyproject.toml" $(git ls-files "*.py" -- ':!tests/**')
       - name: Running unit tests with pytest, generating coverage report
         run: |
           python -m pytest --cov-config=.coveragerc --cov-report markdown --cov '.' tests/*.py

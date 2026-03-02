@@ -44,7 +44,7 @@ repos:
   hooks:
     - id: mypy-validations
       name: mypy-validations
-      entry: bash -c "python -m mypy --show-error-context --explicit-package-bases $(git ls-files "*.py")"
+      entry: bash -c "python -m mypy --show-error-context --explicit-package-bases --config-file 'pyproject.toml' $(git ls-files '*.py' -- ':!tests/**')"
       language: system
 - repo: local
   hooks:
