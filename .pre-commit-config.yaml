@@ -15,13 +15,13 @@ repos:
     - id: check-case-conflict
     - id: check-merge-conflict
     - id: debug-statements
-# - repo: https://github.com/executablebooks/mdformat
-#   rev: 1.0.0
-#   hooks:
-#     - id: mdformat
-#       stages: [pre-commit]
-#       additional_dependencies:
-#         - mdformat-gfm
+- repo: https://github.com/executablebooks/mdformat
+  rev: 1.0.0
+  hooks:
+    - id: mdformat
+      stages: [pre-commit]
+      additional_dependencies:
+        - mdformat-gfm
 - repo: local
   hooks:
     - id: black-format
