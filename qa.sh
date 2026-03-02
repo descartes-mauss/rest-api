@@ -9,5 +9,5 @@ isort .
 echo "Running Ruff..."
 ruff check . --unsafe-fixes
 echo "Running Mypy..."
-mypy . --explicit-package-bases
+python -m mypy --show-error-context --explicit-package-bases $(git ls-files "*.py")
 echo "All checks passed successfully!"
