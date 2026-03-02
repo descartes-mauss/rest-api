@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from database.manager import get_all
 from database.public_models.models import Client
 from routes.client_router import client_router
+from routes.geography_router import geography_router
 from routes.permissions_router import permissions_router
 from routes.topic_router import topic_router
 
@@ -31,5 +32,6 @@ def health() -> JSONResponse:
 
 
 app.include_router(client_router)
+app.include_router(geography_router)
 app.include_router(permissions_router)
 app.include_router(topic_router)

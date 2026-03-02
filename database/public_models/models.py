@@ -87,7 +87,7 @@ class Client(SQLModel, table=True):
 
 
 class ClientGeography(SQLModel, table=True):
-    __tablename__ = "cs_interface_client_geography"
+    __tablename__ = "cs_interface_clientgeography"
     __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)
