@@ -494,6 +494,18 @@ class TenantUser(SQLModel, table=True):
     job_title: str
     metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
+class TenantUserIdentity(SQLModel, table=True):
+    __tablename__ = "client_interface_tenantuseridentity"
+
+    id: UUID = Field(primary_key=True)
+    provider: str = Field(max_length=32)
+    subject: str = Field(max_length=255)
+    email: Optional[str] = Field(default=None, max_length=254)
+    raw_claims: dict = Field(sa_column=Column(JSON))
+    created_at: datetime
+    user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
+
+
 class TenantUserSession(SQLModel, table=True):
     __tablename__ = "client_interface_usersession"
 
