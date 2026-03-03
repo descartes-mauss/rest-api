@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, List, Optional
 from uuid import UUID, uuid4
 
+from sqlalchemy import Integer
 from sqlmodel import JSON, Column, Field, SQLModel
 
 from database.public_models.enums import DatasetProcessStatus, ExperimentType, Industry
@@ -134,7 +135,9 @@ class Experiment(SQLModel, table=True):
     sow_id: int = Field(foreign_key="sow.id")
     experiment_name: str
     experiment_url: str
-    experiment_type: ExperimentType = ExperimentType.EXPERIMENT
+    experiment_type: ExperimentType = Field(
+        default=ExperimentType.EXPERIMENT, sa_column=Column(Integer)
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -152,9 +155,15 @@ class Dataset(SQLModel, table=True):
     dataset_description: Optional[str] = None
     query_type: Optional[str] = None
     industry: Optional[str] = None
-    sourcing_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
-    scraping_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
-    cleaning_translation_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
+    sourcing_status: DatasetProcessStatus = Field(
+        default=DatasetProcessStatus.NOT_STARTED, sa_column=Column(Integer)
+    )
+    scraping_status: DatasetProcessStatus = Field(
+        default=DatasetProcessStatus.NOT_STARTED, sa_column=Column(Integer)
+    )
+    cleaning_translation_status: DatasetProcessStatus = Field(
+        default=DatasetProcessStatus.NOT_STARTED, sa_column=Column(Integer)
+    )
     cleaning_translation_output: Optional[str] = None
     last_updated: datetime = Field(default_factory=datetime.utcnow)
     hidden: bool = False
@@ -166,7 +175,9 @@ class GrowthOpportunityJobExecution(SQLModel, table=True):
 
     job_id: UUID = Field(default_factory=uuid4, primary_key=True)
     client_id: int = Field(foreign_key="client.id")
-    processing_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
+    processing_status: DatasetProcessStatus = Field(
+        default=DatasetProcessStatus.NOT_STARTED, sa_column=Column(Integer)
+    )
     steps_status: Optional[List[dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     geographies: Optional[str] = None
     categories: Optional[str] = None
@@ -182,7 +193,9 @@ class CompanyProfileFetcherJobExecution(SQLModel, table=True):
 
     job_id: UUID = Field(default_factory=uuid4, primary_key=True)
     client_id: int = Field(foreign_key="client.id")
-    processing_status: DatasetProcessStatus = DatasetProcessStatus.NOT_STARTED
+    processing_status: DatasetProcessStatus = Field(
+        default=DatasetProcessStatus.NOT_STARTED, sa_column=Column(Integer)
+    )
     steps_status: Optional[List[dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

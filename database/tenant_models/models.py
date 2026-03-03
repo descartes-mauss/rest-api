@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, List, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, Integer
 from sqlmodel import Field, SQLModel
 
 from database.tenant_models.enums import ExperimentType, MaturityCategory
@@ -190,7 +190,9 @@ class Experiment(SQLModel, table=True):
     sow_sid: int = Field(foreign_key="client_interface_sowmodel.sid")
     experiment_name: str
     experiment_url: str
-    experiment_type: ExperimentType = ExperimentType.EXPERIMENT
+    experiment_type: ExperimentType = Field(
+        default=ExperimentType.EXPERIMENT, sa_column=Column(Integer)
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
