@@ -1,7 +1,7 @@
 """Service layer for the brands endpoints."""
 
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import HTTPException
 
@@ -42,13 +42,7 @@ class BrandService:
     def __init__(self, repo: BrandRepository) -> None:
         self.repo = repo
 
-    def get_brands(self, tenant_schema: Optional[str]) -> List[BrandSchema]:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-
+    def get_brands(self, tenant_schema: str) -> List[BrandSchema]:
         brands = self.repo.get_brands(tenant_schema)
         if not brands:
             return []
@@ -69,13 +63,7 @@ class BrandService:
 
         return [_assemble_brand_schema(b, cat_by_id, pl_by_brand) for b in brands]
 
-    def get_brand(self, tenant_schema: Optional[str], brand_id: int) -> BrandSchema:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-
+    def get_brand(self, tenant_schema: str, brand_id: int) -> BrandSchema:
         brand = self.repo.get_brand_by_id(tenant_schema, brand_id)
         if brand is None:
             raise HTTPException(status_code=404, detail="Brand not available")

@@ -1,0 +1,11 @@
+services/sow_service.py: note: In member "_assemble_foresight" of class "SowService":
+services/sow_service.py:1036: error: Incompatible types in assignment (expression has type "MaturityScoreSource", variable has type "InsightSource")  [assignment]
+services/sow_service.py:1037: error: "InsightSource" has no attribute "maturity_score_id"  [attr-defined]
+services/sow_service.py:1037: note: Error code "attr-defined" not covered by "type: ignore" comment
+services/sow_service.py:1064: error: Incompatible types in assignment (expression has type "MaturityScoreSource", variable has type "InsightSource")  [assignment]
+services/sow_service.py:1065: error: "InsightSource" has no attribute "maturity_score_id"  [attr-defined]
+services/sow_service.py:1065: note: Error code "attr-defined" not covered by "type: ignore" comment
+services/sow_service.py:1209: error: Incompatible types in assignment (expression has type "MaturityScoreSource", variable has type "InsightSource")  [assignment]
+services/sow_service.py:1274: error: Argument 2 to "_maturity_score_schema" has incompatible type "list[InsightSource]"; expected "list[MaturityScoreSource]"  [arg-type]
+services/sow_service.py:1289: error: Argument 2 to "_maturity_score_schema" has incompatible type "list[InsightSource]"; expected "list[MaturityScoreSource]"  [arg-type]
+Found 7 errors in 1 file (checked 44 source files)
