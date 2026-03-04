@@ -221,11 +221,17 @@ class InsightSource(SQLModel, table=True):
     __tablename__ = "client_interface_insightsourcemodel"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # Many-to-many to insights represented as JSON list of insight ids
-    insight_ids: Optional[List[int]] = Field(default=None, sa_column=Column(JSON))
     source_url: str
     source_title: str
     source_favicon: Optional[str] = None
+
+
+class InsightSourceInsight(SQLModel, table=True):
+    __tablename__ = "client_interface_insightsourcemodel_insight"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    insightsourcemodel_id: int = Field(foreign_key="client_interface_insightsourcemodel.id")
+    insightmodel_id: int = Field(foreign_key="client_interface_insightmodel.id")
 
 
 class RawGrowthOpportunity(SQLModel, table=True):

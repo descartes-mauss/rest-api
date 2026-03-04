@@ -9,8 +9,7 @@ Queries span two schemas:
 
 from typing import Dict, List, Optional, Tuple
 
-from sqlalchemy import cast, func, or_
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import func
 from sqlmodel import select
 
 from database.db_session_provider import DBSessionProvider
@@ -19,6 +18,7 @@ from database.tenant_models.models import (
     Driver,
     Insight,
     InsightSource,
+    InsightSourceInsight,
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
@@ -329,16 +329,20 @@ class SowRepository:
 
     def get_insight_sources_for_insight_ids(
         self, tenant_schema: str, insight_ids: List[int]
-    ) -> List[InsightSource]:
-        """Return InsightSource rows whose insight_ids JSON array contains any of the given IDs."""
+    ) -> List[Tuple[InsightSource, int]]:
+        """Return (InsightSource, insight_id) pairs for the given insight IDs via the join table."""
         if not insight_ids:
             return []
         with self.db.tenant_session(tenant_schema) as session:
-            conditions = [
-                cast(InsightSource.insight_ids, JSONB).contains([iid]) for iid in insight_ids
-            ]
-            stmt = select(InsightSource).where(or_(*conditions))
-            return list(session.exec(stmt).all())
+            stmt = (
+                select(InsightSource, InsightSourceInsight.insightmodel_id)
+                .join(
+                    InsightSourceInsight,
+                    InsightSourceInsight.insightsourcemodel_id == InsightSource.id,  # type: ignore[arg-type]
+                )
+                .where(InsightSourceInsight.insightmodel_id.in_(insight_ids))  # type: ignore[attr-defined]
+            )
+            return [(row[0], row[1]) for row in session.exec(stmt).all()]
 
     def get_topics_by_topic_str_ids(
         self, tenant_schema: str, sow_sid: int, topic_ids: List[str]

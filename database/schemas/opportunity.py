@@ -14,3 +14,4 @@ class OpportunitySchema(BaseModel):
     for_deletion: bool = False
     topics: List[TopicSchema] = []
     topic_ids: List[str] = []
+    topic: List[int] = []

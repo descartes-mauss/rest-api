@@ -71,13 +71,9 @@ def make_insight(
     )
 
 
-def make_insight_source(
-    source_id: int = 1,
-    insight_ids: Optional[List[int]] = None,
-) -> InsightSource:
+def make_insight_source(source_id: int = 1) -> InsightSource:
     return InsightSource(
         id=source_id,
-        insight_ids=insight_ids or [1],
         source_url="https://example.com",
         source_title="Example Source",
         source_favicon="https://example.com/favicon.ico",
@@ -258,7 +254,7 @@ class BaseFakeRepo:
 
     def get_insight_sources_for_insight_ids(
         self, tenant_schema: str, insight_ids: List[int]
-    ) -> List[InsightSource]:
+    ) -> List[Tuple[InsightSource, int]]:
         return []
 
     def get_topics_by_topic_str_ids(
@@ -310,7 +306,7 @@ def test_get_foresight_topic_insight_success(client: TestClient) -> None:
     """GET foresight returns an insight with a topic prediction and source."""
     sow = make_sow()
     insight = make_insight(insight_id=1, entity_id="topic-5", entity_type="topic")
-    source = make_insight_source(source_id=1, insight_ids=[1])
+    source = make_insight_source(source_id=1)
     topic = make_topic(tid=5, topic_id="topic-5")
     topic_score = make_maturity_score(score_id=1, topic_id=5, category="global", score=0.6)
     t2d = make_t2d(tid=5, did=42)
@@ -327,8 +323,8 @@ def test_get_foresight_topic_insight_success(client: TestClient) -> None:
 
         def get_insight_sources_for_insight_ids(
             self, tenant_schema: str, insight_ids: List[int]
-        ) -> List[InsightSource]:
-            return [source]
+        ) -> List[Tuple[InsightSource, int]]:
+            return [(source, 1)]
 
         def get_topics_by_topic_str_ids(
             self, tenant_schema: str, sow_sid: int, topic_ids: List[str]

@@ -511,6 +511,7 @@ class SowService:
                     for_deletion=opp.for_deletion,
                     topics=topic_schemas,
                     topic_ids=[t.topic_id for t in opp_topics],
+                    topic=[t.tid for t in opp_topics if t.tid is not None],
                 )
             )
 
@@ -785,14 +786,10 @@ class SowService:
             )
 
         insight_ids = [i.id for i in insights if i.id is not None]
-        insight_id_set = set(insight_ids)
         raw_sources = self.repo.get_insight_sources_for_insight_ids(tenant_schema, insight_ids)
         sources_by_insight: Dict[int, List[InsightSource]] = defaultdict(list)
-        for isrc in raw_sources:
-            if isrc.insight_ids:
-                for iid in isrc.insight_ids:
-                    if iid in insight_id_set:
-                        sources_by_insight[iid].append(isrc)
+        for isrc, insight_id in raw_sources:
+            sources_by_insight[insight_id].append(isrc)
 
         topic_entity_ids = list({i.entity_id for i in insights if i.entity_type == "topic"})
         trend_entity_ids = list({i.entity_id for i in insights if i.entity_type == "trend"})
