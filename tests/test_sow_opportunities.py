@@ -109,7 +109,7 @@ def make_maturity_score(
         id=score_id,
         topic_id=topic_id,
         trend_id=trend_id,
-        category=category,  # type: ignore[arg-type]
+        category=category,
         score=score,
         threshold="High",
         rationale="Good",
@@ -137,7 +137,7 @@ def make_score_delta(
         sow_id=sow_sid,
         topic_id=topic_id,
         trend_id=trend_id,
-        category=category,  # type: ignore[arg-type]
+        category=category,
         absolute_delta=0.05,
         percentage_delta=5.0,
         label="Improving",

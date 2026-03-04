@@ -1,12 +1,13 @@
 """Service layer for the sows endpoints."""
 
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 
 from database.public_models.models import Geography, PublicSow
 from database.schemas.driver import DriverSchema
+from database.schemas.insight import ForesightResponse, InsightSchema, InsightSourceSchema
 from database.schemas.maturity import (
     MaturityScoreDeltaSchema,
     MaturityScoreSchema,
@@ -18,6 +19,8 @@ from database.schemas.sow import DEFAULT_GEOGRAPHY_ID, DEFAULT_GEOGRAPHY_NAME, S
 from database.schemas.topic import TopicSchema, UnlinkedTopicSchema
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import (
+    Insight,
+    InsightSource,
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
@@ -28,6 +31,7 @@ from database.tenant_models.models import (
 from repositories.sow_repository import SowRepository
 
 _MISSING_TENANT = "Authorization token missing tenant schema information."
+_WEEKLY_INSIGHTS_MAX_SIZE = 8
 
 
 def _assemble_sow_schema(
@@ -902,3 +906,433 @@ class SowService:
             )
 
         return result
+
+    # ------------------------------------------------------------------
+    # Foresight endpoints
+    # ------------------------------------------------------------------
+
+    def get_foresight(
+        self,
+        tenant_schema: Optional[str],
+        sow_id: int,
+        page: int = 1,
+        limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
+    ) -> ForesightResponse:
+        if not tenant_schema:
+            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
+
+        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
+        if sow is None:
+            raise HTTPException(status_code=404, detail="SOW not available")
+
+        if not sow.cs_sow_id:
+            return ForesightResponse(total=0, limit=limit, hasNext=False, hasPrev=False)
+
+        offset = (page - 1) * limit
+        total, insights = self.repo.get_insights_for_cs_sow_id(
+            tenant_schema, sow.cs_sow_id, offset=offset, limit=limit
+        )
+        return self._assemble_foresight(tenant_schema, sow, insights, total, page, limit)
+
+    def get_foresight_search(
+        self,
+        tenant_schema: Optional[str],
+        sow_id: int,
+        topic_ids: Optional[List[str]] = None,
+        trend_ids: Optional[List[str]] = None,
+        page: int = 1,
+        limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
+    ) -> ForesightResponse:
+        if not tenant_schema:
+            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
+
+        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
+        if sow is None:
+            raise HTTPException(status_code=404, detail="SOW not available")
+
+        if not sow.cs_sow_id:
+            return ForesightResponse(total=0, limit=limit, hasNext=False, hasPrev=False)
+
+        offset = (page - 1) * limit
+        entity_ids = list({*(topic_ids or []), *(trend_ids or [])})
+
+        if entity_ids:
+            total, insights = self.repo.get_insights_filtered(
+                tenant_schema, sow.cs_sow_id, entity_ids=entity_ids, offset=offset, limit=limit
+            )
+        else:
+            total, insights = self.repo.get_insights_for_cs_sow_id(
+                tenant_schema, sow.cs_sow_id, offset=offset, limit=limit
+            )
+        return self._assemble_foresight(tenant_schema, sow, insights, total, page, limit)
+
+    def _assemble_foresight(
+        self,
+        tenant_schema: str,
+        sow: TenantSow,
+        insights: List[Insight],
+        total: int,
+        page: int,
+        limit: int,
+    ) -> ForesightResponse:
+        sow_sid = sow.sid or 0
+        offset = (page - 1) * limit
+        has_prev = page > 1
+        has_next = (offset + len(insights)) < total
+
+        if not insights:
+            return ForesightResponse(
+                total=total, limit=limit, hasNext=has_next, hasPrev=has_prev, weeklyInsights=[]
+            )
+
+        # ---- Sources ----
+        insight_ids = [i.id for i in insights if i.id is not None]
+        insight_id_set = set(insight_ids)
+        raw_sources = self.repo.get_insight_sources_for_insight_ids(tenant_schema, insight_ids)
+        sources_by_insight: Dict[int, List[InsightSource]] = defaultdict(list)
+        for isrc in raw_sources:
+            if isrc.insight_ids:
+                for iid in isrc.insight_ids:
+                    if iid in insight_id_set:
+                        sources_by_insight[iid].append(isrc)
+
+        # ---- Collect entity IDs by type ----
+        topic_entity_ids = list({i.entity_id for i in insights if i.entity_type == "topic"})
+        trend_entity_ids = list({i.entity_id for i in insights if i.entity_type == "trend"})
+
+        # ---- Build topic prediction schemas ----
+        topic_schema_by_topic_id: Dict[str, List[TopicSchema]] = defaultdict(list)
+        if topic_entity_ids:
+            pred_topics = self.repo.get_topics_by_topic_str_ids(
+                tenant_schema, sow_sid, topic_entity_ids
+            )
+            if pred_topics:
+                topic_tids = [t.tid for t in pred_topics if t.tid is not None]
+                topic_id_strings = [t.topic_id for t in pred_topics]
+                topic_scores = self.repo.get_maturity_scores_for_topic_ids(
+                    tenant_schema, topic_tids
+                )
+                topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
+                t_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
+                topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+                    tenant_schema, sow_sid, topic_id_strings
+                )
+                t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
+                topic_trend_ssids = list({t.ssid for t in pred_topics if t.ssid is not None})
+                topic_trends = self.repo.get_trends_by_ssids(tenant_schema, topic_trend_ssids)
+                topic_trend_id_strings = [tr.trend_id for tr in topic_trends]
+                topic_trend_scores = self.repo.get_maturity_scores_for_trend_ids(
+                    tenant_schema, topic_trend_ssids
+                )
+                topic_trend_score_ids = [ms.id for ms in topic_trend_scores if ms.id is not None]
+                topic_trend_sources = self.repo.get_maturity_score_sources(
+                    tenant_schema, topic_trend_score_ids
+                )
+                topic_trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+                    tenant_schema, sow_sid, topic_trend_id_strings
+                )
+
+                t_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+                for src in t_sources:
+                    t_sources_by_score[src.maturity_score_id].append(src)
+
+                t_non_global_by_tid: Dict[int, List[MaturityScore]] = defaultdict(list)
+                t_global_by_tid: Dict[int, MaturityScore] = {}
+                for ms in topic_scores:
+                    if ms.topic_id is None:
+                        continue
+                    if str(ms.category) == "global":
+                        t_global_by_tid.setdefault(ms.topic_id, ms)
+                    else:
+                        t_non_global_by_tid[ms.topic_id].append(ms)
+
+                t_non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+                t_global_delta_by_id: Dict[str, MaturityScoreDelta] = {}
+                for delta in topic_deltas:
+                    if delta.topic_id is None:
+                        continue
+                    if str(delta.category) == "global":
+                        t_global_delta_by_id.setdefault(delta.topic_id, delta)
+                    else:
+                        t_non_global_deltas_by_id[delta.topic_id].append(delta)
+
+                drivers_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+                for row in t2d_rows:
+                    drivers_by_topic_tid[row.tid].append(row.did)
+
+                tt_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+                for src in topic_trend_sources:
+                    tt_sources_by_score[src.maturity_score_id].append(src)
+
+                tt_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
+                tt_global_by_ssid: Dict[int, MaturityScore] = {}
+                for ms in topic_trend_scores:
+                    if ms.trend_id is None:
+                        continue
+                    if str(ms.category) == "global":
+                        tt_global_by_ssid.setdefault(ms.trend_id, ms)
+                    else:
+                        tt_non_global_by_ssid[ms.trend_id].append(ms)
+
+                tt_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+                tt_global_delta: Dict[str, MaturityScoreDelta] = {}
+                for delta in topic_trend_deltas:
+                    if delta.trend_id is None:
+                        continue
+                    if str(delta.category) == "global":
+                        tt_global_delta.setdefault(delta.trend_id, delta)
+                    else:
+                        tt_non_global_deltas[delta.trend_id].append(delta)
+
+                topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+                for t in pred_topics:
+                    if t.ssid is not None:
+                        topics_by_trend_ssid[t.ssid].append(t)
+
+                trend_schema_by_ssid: Dict[int, TrendSchema] = {}
+                for tr in topic_trends:
+                    ssid = tr.ssid or 0
+                    g_ms = tt_global_by_ssid.get(ssid)
+                    g_delta = tt_global_delta.get(tr.trend_id)
+                    trend_schema_by_ssid[ssid] = TrendSchema(
+                        ssid=tr.ssid,
+                        sow=tr.sid,
+                        load_date=tr.load_date,
+                        trend_id=tr.trend_id,
+                        trend_name=tr.trend_name,
+                        trend_description=tr.trend_description,
+                        shift_id=tr.shift_id,
+                        shift_name=tr.shift_name,
+                        shift_description=tr.shift_description,
+                        trend_image_s3_uri=tr.trend_image_s3_uri,
+                        masterfile_version=tr.masterfile_version,
+                        for_deletion=tr.for_deletion,
+                        new_discovery=tr.new_discovery,
+                        maturity_scores=[
+                            _maturity_score_schema(ms, tt_sources_by_score.get(ms.id or 0, []))
+                            for ms in sorted(
+                                tt_non_global_by_ssid.get(ssid, []),
+                                key=lambda x: str(x.category),
+                            )
+                        ],
+                        maturity_scores_deltas=[
+                            MaturityScoreDeltaSchema.model_validate(d)
+                            for d in sorted(
+                                tt_non_global_deltas.get(tr.trend_id, []),
+                                key=lambda x: str(x.category),
+                            )
+                        ],
+                        global_maturity_score=(
+                            _maturity_score_schema(g_ms, tt_sources_by_score.get(g_ms.id or 0, []))
+                            if g_ms
+                            else None
+                        ),
+                        global_maturity_score_delta=(
+                            MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
+                        ),
+                        related_topics=[
+                            UnlinkedTopicSchema.model_validate(rt)
+                            for rt in topics_by_trend_ssid.get(ssid, [])
+                        ],
+                    )
+
+                for t in pred_topics:
+                    tid = t.tid or 0
+                    g_ms = t_global_by_tid.get(tid)
+                    g_delta = t_global_delta_by_id.get(t.topic_id)
+                    topic_schema_by_topic_id[t.topic_id].append(
+                        TopicSchema(
+                            tid=t.tid,
+                            sow=t.sid,
+                            load_date=t.load_date,
+                            topic_id=t.topic_id,
+                            topic_name=t.topic_name,
+                            topic_status=t.topic_status,
+                            topic_description=t.topic_description,
+                            topic_image_s3_uri=t.topic_image_s3_uri,
+                            masterfile_version=t.masterfile_version,
+                            for_deletion=t.for_deletion,
+                            new_discovery=t.new_discovery,
+                            trend=trend_schema_by_ssid.get(t.ssid or 0),
+                            driver=drivers_by_topic_tid.get(tid, []),
+                            maturity_scores=[
+                                _maturity_score_schema(ms, t_sources_by_score.get(ms.id or 0, []))
+                                for ms in sorted(
+                                    t_non_global_by_tid.get(tid, []),
+                                    key=lambda x: str(x.category),
+                                )
+                            ],
+                            maturity_scores_deltas=[
+                                MaturityScoreDeltaSchema.model_validate(d)
+                                for d in sorted(
+                                    t_non_global_deltas_by_id.get(t.topic_id, []),
+                                    key=lambda x: str(x.category),
+                                )
+                            ],
+                            global_maturity_score=(
+                                _maturity_score_schema(
+                                    g_ms, t_sources_by_score.get(g_ms.id or 0, [])
+                                )
+                                if g_ms
+                                else None
+                            ),
+                            global_maturity_score_delta=(
+                                MaturityScoreDeltaSchema.model_validate(g_delta)
+                                if g_delta
+                                else None
+                            ),
+                        )
+                    )
+
+        # ---- Build trend prediction schemas ----
+        trend_schema_by_trend_id: Dict[str, List[TrendSchema]] = defaultdict(list)
+        if trend_entity_ids:
+            pred_trends = self.repo.get_trends_by_trend_str_ids(
+                tenant_schema, sow_sid, trend_entity_ids
+            )
+            if pred_trends:
+                trend_ssids = [t.ssid for t in pred_trends if t.ssid is not None]
+                trend_id_strings = [t.trend_id for t in pred_trends]
+                trend_scores = self.repo.get_maturity_scores_for_trend_ids(
+                    tenant_schema, trend_ssids
+                )
+                trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
+                tr_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+                trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+                    tenant_schema, sow_sid, trend_id_strings
+                )
+                rel_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+                rt_tids = [rt.tid for rt in rel_topics if rt.tid is not None]
+                t2d_for_trends = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, rt_tids)
+
+                tr_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+                for src in tr_sources:
+                    tr_sources_by_score[src.maturity_score_id].append(src)
+
+                tr_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
+                tr_global_by_ssid: Dict[int, MaturityScore] = {}
+                for ms in trend_scores:
+                    if ms.trend_id is None:
+                        continue
+                    if str(ms.category) == "global":
+                        tr_global_by_ssid.setdefault(ms.trend_id, ms)
+                    else:
+                        tr_non_global_by_ssid[ms.trend_id].append(ms)
+
+                tr_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+                tr_global_delta: Dict[str, MaturityScoreDelta] = {}
+                for delta in trend_deltas:
+                    if delta.trend_id is None:
+                        continue
+                    if str(delta.category) == "global":
+                        tr_global_delta.setdefault(delta.trend_id, delta)
+                    else:
+                        tr_non_global_deltas[delta.trend_id].append(delta)
+
+                rel_topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+                for rt in rel_topics:
+                    if rt.ssid is not None:
+                        rel_topics_by_trend_ssid[rt.ssid].append(rt)
+
+                dids_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+                for row in t2d_for_trends:
+                    dids_by_topic_tid[row.tid].append(row.did)
+
+                topic_tids_by_trend_ssid: Dict[int, List[int]] = defaultdict(list)
+                for rt in rel_topics:
+                    if rt.tid is not None and rt.ssid is not None:
+                        topic_tids_by_trend_ssid[rt.ssid].append(rt.tid)
+
+                for tr in pred_trends:
+                    ssid = tr.ssid or 0
+                    g_ms = tr_global_by_ssid.get(ssid)
+                    g_delta = tr_global_delta.get(tr.trend_id)
+                    driver_count = len(
+                        {
+                            did
+                            for tid in topic_tids_by_trend_ssid.get(ssid, [])
+                            for did in dids_by_topic_tid.get(tid, [])
+                        }
+                    )
+                    trend_schema_by_trend_id[tr.trend_id].append(
+                        TrendSchema(
+                            ssid=tr.ssid,
+                            sow=tr.sid,
+                            load_date=tr.load_date,
+                            trend_id=tr.trend_id,
+                            trend_name=tr.trend_name,
+                            trend_description=tr.trend_description,
+                            shift_id=tr.shift_id,
+                            shift_name=tr.shift_name,
+                            shift_description=tr.shift_description,
+                            trend_image_s3_uri=tr.trend_image_s3_uri,
+                            masterfile_version=tr.masterfile_version,
+                            for_deletion=tr.for_deletion,
+                            new_discovery=tr.new_discovery,
+                            driver_count=driver_count,
+                            maturity_scores=[
+                                _maturity_score_schema(ms, tr_sources_by_score.get(ms.id or 0, []))
+                                for ms in sorted(
+                                    tr_non_global_by_ssid.get(ssid, []),
+                                    key=lambda x: str(x.category),
+                                )
+                            ],
+                            maturity_scores_deltas=[
+                                MaturityScoreDeltaSchema.model_validate(d)
+                                for d in sorted(
+                                    tr_non_global_deltas.get(tr.trend_id, []),
+                                    key=lambda x: str(x.category),
+                                )
+                            ],
+                            global_maturity_score=(
+                                _maturity_score_schema(
+                                    g_ms, tr_sources_by_score.get(g_ms.id or 0, [])
+                                )
+                                if g_ms
+                                else None
+                            ),
+                            global_maturity_score_delta=(
+                                MaturityScoreDeltaSchema.model_validate(g_delta)
+                                if g_delta
+                                else None
+                            ),
+                            related_topics=[
+                                UnlinkedTopicSchema.model_validate(rt)
+                                for rt in rel_topics_by_trend_ssid.get(ssid, [])
+                            ],
+                        )
+                    )
+
+        # ---- Assemble weekly insights ----
+        weekly_insights: List[InsightSchema] = []
+        for insight in insights:
+            iid = insight.id or 0
+            predictions: List[Any] = (
+                topic_schema_by_topic_id.get(insight.entity_id, [])
+                if insight.entity_type == "topic"
+                else trend_schema_by_trend_id.get(insight.entity_id, [])
+            )
+            weekly_insights.append(
+                InsightSchema(
+                    insight_title=insight.insight_title,
+                    insight_description=insight.insight_description,
+                    created_at=insight.created_at,
+                    sources=[
+                        InsightSourceSchema(
+                            source_url=s.source_url,
+                            source_title=s.source_title,
+                            source_favicon=s.source_favicon or "",
+                        )
+                        for s in sources_by_insight.get(iid, [])
+                    ],
+                    predictions=predictions,
+                )
+            )
+
+        return ForesightResponse(
+            total=total,
+            limit=limit,
+            hasNext=has_next,
+            hasPrev=has_prev,
+            weeklyInsights=weekly_insights,
+        )

@@ -5,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.driver import DriverSchema
+from database.schemas.insight import ForesightResponse, ForesightSearchRequest
 from database.schemas.opportunity import OpportunitySchema
 from database.schemas.shift import ShiftSchema
 from database.schemas.sow import SowSchema
@@ -121,6 +122,42 @@ def get_sow_versions(
     """Return all live versions of the given SOW, newest first."""
     tenant_schema = authorization.get("orgId")
     result = service.get_versions(tenant_schema, sow_id)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@sow_router.get("/sows/{sow_id}/foresight", response_model=ForesightResponse)
+def get_sow_foresight(
+    sow_id: int,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=8, le=8),
+    authorization: Dict[str, Any] = Depends(validate_jwt),
+    service: SowService = Depends(get_sow_service),
+) -> JSONResponse:
+    """Return a paginated list of foresight insights for the given SOW."""
+    tenant_schema = authorization.get("orgId")
+    result = service.get_foresight(tenant_schema, sow_id, page=page, limit=limit)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@sow_router.post("/sows/{sow_id}/foresight/search", response_model=ForesightResponse)
+def search_sow_foresight(
+    sow_id: int,
+    body: ForesightSearchRequest,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=8, le=8),
+    authorization: Dict[str, Any] = Depends(validate_jwt),
+    service: SowService = Depends(get_sow_service),
+) -> JSONResponse:
+    """Return a filtered paginated list of foresight insights, optionally by topic/trend IDs."""
+    tenant_schema = authorization.get("orgId")
+    result = service.get_foresight_search(
+        tenant_schema,
+        sow_id,
+        topic_ids=body.topic_ids or None,
+        trend_ids=body.trend_ids or None,
+        page=page,
+        limit=limit,
+    )
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
 
