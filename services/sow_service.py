@@ -33,6 +33,11 @@ from repositories.sow_repository import SowRepository
 _WEEKLY_INSIGHTS_MAX_SIZE = 8
 
 
+# ------------------------------------------------------------------
+# SOW / geography helpers
+# ------------------------------------------------------------------
+
+
 def _assemble_sow_schema(
     sow: TenantSow,
     geo_map: Dict[str, Tuple[Optional[str], Optional[str]]],
@@ -60,6 +65,90 @@ def _build_geo_map(
     return geo_map
 
 
+# ------------------------------------------------------------------
+# Maturity score / delta map-building helpers
+# ------------------------------------------------------------------
+
+
+def _build_sources_map(
+    sources: List[MaturityScoreSource],
+) -> Dict[int, List[MaturityScoreSource]]:
+    """Group MaturityScoreSource rows by maturity_score_id."""
+    result: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+    for src in sources:
+        result[src.maturity_score_id].append(src)
+    return result
+
+
+def _split_trend_scores(
+    scores: List[MaturityScore],
+) -> Tuple[Dict[int, MaturityScore], Dict[int, List[MaturityScore]]]:
+    """Return (global_by_ssid, non_global_by_ssid) maps keyed by trend ssid."""
+    global_by_id: Dict[int, MaturityScore] = {}
+    non_global_by_id: Dict[int, List[MaturityScore]] = defaultdict(list)
+    for ms in scores:
+        if ms.trend_id is None:
+            continue
+        if str(ms.category) == "global":
+            global_by_id.setdefault(ms.trend_id, ms)
+        else:
+            non_global_by_id[ms.trend_id].append(ms)
+    return global_by_id, non_global_by_id
+
+
+def _split_topic_scores(
+    scores: List[MaturityScore],
+) -> Tuple[Dict[int, MaturityScore], Dict[int, List[MaturityScore]]]:
+    """Return (global_by_tid, non_global_by_tid) maps keyed by topic tid."""
+    global_by_id: Dict[int, MaturityScore] = {}
+    non_global_by_id: Dict[int, List[MaturityScore]] = defaultdict(list)
+    for ms in scores:
+        if ms.topic_id is None:
+            continue
+        if str(ms.category) == "global":
+            global_by_id.setdefault(ms.topic_id, ms)
+        else:
+            non_global_by_id[ms.topic_id].append(ms)
+    return global_by_id, non_global_by_id
+
+
+def _split_trend_deltas(
+    deltas: List[MaturityScoreDelta],
+) -> Tuple[Dict[str, MaturityScoreDelta], Dict[str, List[MaturityScoreDelta]]]:
+    """Return (global_by_id, non_global_by_id) maps keyed by trend_id string."""
+    global_by_id: Dict[str, MaturityScoreDelta] = {}
+    non_global_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+    for delta in deltas:
+        if delta.trend_id is None:
+            continue
+        if str(delta.category) == "global":
+            global_by_id.setdefault(delta.trend_id, delta)
+        else:
+            non_global_by_id[delta.trend_id].append(delta)
+    return global_by_id, non_global_by_id
+
+
+def _split_topic_deltas(
+    deltas: List[MaturityScoreDelta],
+) -> Tuple[Dict[str, MaturityScoreDelta], Dict[str, List[MaturityScoreDelta]]]:
+    """Return (global_by_id, non_global_by_id) maps keyed by topic_id string."""
+    global_by_id: Dict[str, MaturityScoreDelta] = {}
+    non_global_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+    for delta in deltas:
+        if delta.topic_id is None:
+            continue
+        if str(delta.category) == "global":
+            global_by_id.setdefault(delta.topic_id, delta)
+        else:
+            non_global_by_id[delta.topic_id].append(delta)
+    return global_by_id, non_global_by_id
+
+
+# ------------------------------------------------------------------
+# Schema assembly helpers
+# ------------------------------------------------------------------
+
+
 def _maturity_score_schema(
     ms: MaturityScore,
     sources: List[MaturityScoreSource],
@@ -71,6 +160,106 @@ def _maturity_score_schema(
         threshold=ms.threshold,
         rationale=ms.rationale,
         sources=[MaturityScoreSourceSchema.model_validate(s) for s in sources],
+    )
+
+
+def _assemble_trend_schema(
+    trend: Trend,
+    sources_by_score: Dict[int, List[MaturityScoreSource]],
+    global_by_ssid: Dict[int, MaturityScore],
+    non_global_by_ssid: Dict[int, List[MaturityScore]],
+    global_delta_by_id: Dict[str, MaturityScoreDelta],
+    non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]],
+    rel_topics_by_ssid: Dict[int, List[Topic]],
+    driver_count: Optional[int] = None,
+) -> TrendSchema:
+    """Construct a TrendSchema from a Trend and its pre-built lookup maps."""
+    ssid = trend.ssid or 0
+    g_ms = global_by_ssid.get(ssid)
+    g_delta = global_delta_by_id.get(trend.trend_id)
+    return TrendSchema(
+        ssid=trend.ssid,
+        sow=trend.sid,
+        load_date=trend.load_date,
+        trend_id=trend.trend_id,
+        trend_name=trend.trend_name,
+        trend_description=trend.trend_description,
+        shift_id=trend.shift_id,
+        shift_name=trend.shift_name,
+        shift_description=trend.shift_description,
+        trend_image_s3_uri=trend.trend_image_s3_uri,
+        masterfile_version=trend.masterfile_version,
+        for_deletion=trend.for_deletion,
+        new_discovery=trend.new_discovery,
+        driver_count=driver_count,
+        maturity_scores=[
+            _maturity_score_schema(ms, sources_by_score.get(ms.id or 0, []))
+            for ms in sorted(non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category))
+        ],
+        maturity_scores_deltas=[
+            MaturityScoreDeltaSchema.model_validate(d)
+            for d in sorted(
+                non_global_deltas_by_id.get(trend.trend_id, []),
+                key=lambda x: str(x.category),
+            )
+        ],
+        global_maturity_score=(
+            _maturity_score_schema(g_ms, sources_by_score.get(g_ms.id or 0, [])) if g_ms else None
+        ),
+        global_maturity_score_delta=(
+            MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
+        ),
+        related_topics=[
+            UnlinkedTopicSchema.model_validate(rt) for rt in rel_topics_by_ssid.get(ssid, [])
+        ],
+    )
+
+
+def _assemble_topic_schema(
+    topic: Topic,
+    sources_by_score: Dict[int, List[MaturityScoreSource]],
+    global_by_tid: Dict[int, MaturityScore],
+    non_global_by_tid: Dict[int, List[MaturityScore]],
+    global_delta_by_id: Dict[str, MaturityScoreDelta],
+    non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]],
+    trend_schema_by_ssid: Dict[int, TrendSchema],
+    drivers_by_tid: Dict[int, List[int]],
+) -> TopicSchema:
+    """Construct a TopicSchema from a Topic and its pre-built lookup maps."""
+    tid = topic.tid or 0
+    g_ms = global_by_tid.get(tid)
+    g_delta = global_delta_by_id.get(topic.topic_id)
+    return TopicSchema(
+        tid=topic.tid,
+        sow=topic.sid,
+        load_date=topic.load_date,
+        topic_id=topic.topic_id,
+        topic_name=topic.topic_name,
+        topic_status=topic.topic_status,
+        topic_description=topic.topic_description,
+        topic_image_s3_uri=topic.topic_image_s3_uri,
+        masterfile_version=topic.masterfile_version,
+        for_deletion=topic.for_deletion,
+        new_discovery=topic.new_discovery,
+        trend=trend_schema_by_ssid.get(topic.ssid or 0),
+        driver=drivers_by_tid.get(tid, []),
+        maturity_scores=[
+            _maturity_score_schema(ms, sources_by_score.get(ms.id or 0, []))
+            for ms in sorted(non_global_by_tid.get(tid, []), key=lambda x: str(x.category))
+        ],
+        maturity_scores_deltas=[
+            MaturityScoreDeltaSchema.model_validate(d)
+            for d in sorted(
+                non_global_deltas_by_id.get(topic.topic_id, []),
+                key=lambda x: str(x.category),
+            )
+        ],
+        global_maturity_score=(
+            _maturity_score_schema(g_ms, sources_by_score.get(g_ms.id or 0, [])) if g_ms else None
+        ),
+        global_maturity_score_delta=(
+            MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
+        ),
     )
 
 
@@ -88,6 +277,13 @@ class SowService:
     def __init__(self, repo: SowRepository) -> None:
         self.repo = repo
 
+    def _get_sow_or_404(self, tenant_schema: str, sow_id: int) -> TenantSow:
+        """Return the TenantSow for sow_id, or raise HTTP 404."""
+        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
+        if sow is None:
+            raise HTTPException(status_code=404, detail="SOW not available")
+        return sow
+
     # ------------------------------------------------------------------
     # Core SOW endpoints
     # ------------------------------------------------------------------
@@ -104,9 +300,7 @@ class SowService:
         return [_assemble_sow_schema(sow, geo_map) for sow in sows]
 
     def get_sow(self, tenant_schema: str, sow_id: int) -> SowSchema:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
 
         if not sow.cs_sow_id:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -125,10 +319,7 @@ class SowService:
     # ------------------------------------------------------------------
 
     def get_shifts(self, tenant_schema: str, sow_id: int) -> List[ShiftSchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
-
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
         trends = self.repo.get_trends_for_sow(tenant_schema, sow.sid or sow_id)
         if not trends:
             return []
@@ -136,7 +327,6 @@ class SowService:
         trend_ssids = [t.ssid for t in trends if t.ssid is not None]
         trend_id_strings = [t.trend_id for t in trends]
 
-        # Batch-fetch all related data
         all_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         score_ids = [ms.id for ms in all_scores if ms.id is not None]
         sources = self.repo.get_maturity_score_sources(tenant_schema, score_ids)
@@ -145,91 +335,28 @@ class SowService:
         )
         related_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
 
-        # Build lookup maps
-        sources_by_score_id: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in sources:
-            sources_by_score_id[src.maturity_score_id].append(src)
+        sources_by_score = _build_sources_map(sources)
+        global_by_ssid, non_global_by_ssid = _split_trend_scores(all_scores)
+        global_delta_by_id, non_global_deltas_by_id = _split_trend_deltas(deltas)
 
-        non_global_by_trend: Dict[int, List[MaturityScore]] = defaultdict(list)
-        global_by_trend: Dict[int, MaturityScore] = {}
-        for ms in all_scores:
-            if ms.trend_id is None:
-                continue
-            if str(ms.category) == "global":
-                global_by_trend.setdefault(ms.trend_id, ms)
-            else:
-                non_global_by_trend[ms.trend_id].append(ms)
-
-        non_global_deltas_by_trend: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        global_delta_by_trend: Dict[str, MaturityScoreDelta] = {}
-        for delta in deltas:
-            if delta.trend_id is None:
-                continue
-            if str(delta.category) == "global":
-                global_delta_by_trend.setdefault(delta.trend_id, delta)
-            else:
-                non_global_deltas_by_trend[delta.trend_id].append(delta)
-
-        topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+        rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for topic in related_topics:
             if topic.ssid is not None:
-                topics_by_trend_ssid[topic.ssid].append(topic)
+                rel_topics_by_ssid[topic.ssid].append(topic)
 
-        # Sort trends: descending global_maturity_score, then shift_id, then trend_name
-        sorted_trends = sorted(trends, key=lambda t: _trend_sort_key(t, global_by_trend))
+        sorted_trends = sorted(trends, key=lambda t: _trend_sort_key(t, global_by_ssid))
 
-        # Assemble trend schemas and group into shifts preserving order
         shifts: Dict[str, ShiftSchema] = {}
         for t in sorted_trends:
-            ssid = t.ssid or 0
-            trend_id = t.trend_id
-
-            ms_schemas = [
-                _maturity_score_schema(ms, sources_by_score_id.get(ms.id or 0, []))
-                for ms in sorted(non_global_by_trend.get(ssid, []), key=lambda x: str(x.category))
-            ]
-            global_ms = global_by_trend.get(ssid)
-            global_ms_schema = (
-                _maturity_score_schema(global_ms, sources_by_score_id.get(global_ms.id or 0, []))
-                if global_ms
-                else None
+            trend_schema = _assemble_trend_schema(
+                t,
+                sources_by_score,
+                global_by_ssid,
+                non_global_by_ssid,
+                global_delta_by_id,
+                non_global_deltas_by_id,
+                rel_topics_by_ssid,
             )
-            delta_schemas = [
-                MaturityScoreDeltaSchema.model_validate(d)
-                for d in sorted(
-                    non_global_deltas_by_trend.get(trend_id, []),
-                    key=lambda x: str(x.category),
-                )
-            ]
-            global_delta = global_delta_by_trend.get(trend_id)
-            global_delta_schema = (
-                MaturityScoreDeltaSchema.model_validate(global_delta) if global_delta else None
-            )
-
-            trend_schema = TrendSchema(
-                ssid=t.ssid,
-                sow=t.sid,
-                load_date=t.load_date,
-                trend_id=t.trend_id,
-                trend_name=t.trend_name,
-                trend_description=t.trend_description,
-                shift_id=t.shift_id,
-                shift_name=t.shift_name,
-                shift_description=t.shift_description,
-                trend_image_s3_uri=t.trend_image_s3_uri,
-                masterfile_version=t.masterfile_version,
-                for_deletion=t.for_deletion,
-                new_discovery=t.new_discovery,
-                maturity_scores=ms_schemas,
-                maturity_scores_deltas=delta_schemas,
-                global_maturity_score=global_ms_schema,
-                global_maturity_score_delta=global_delta_schema,
-                related_topics=[
-                    UnlinkedTopicSchema.model_validate(tp)
-                    for tp in topics_by_trend_ssid.get(ssid, [])
-                ],
-            )
-
             if t.shift_id not in shifts:
                 shifts[t.shift_id] = ShiftSchema(
                     id=t.shift_id,
@@ -247,10 +374,7 @@ class SowService:
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[DriverSchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
-
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
         drivers = self.repo.get_drivers_for_sow(tenant_schema, sow.sid or sow_id)
 
         driver_dids = [d.did for d in drivers if d.did is not None]
@@ -279,9 +403,7 @@ class SowService:
         ]
 
     def get_versions(self, tenant_schema: str, sow_id: int) -> List[SowSchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
 
         if not sow.cs_sow_id:
             return []
@@ -294,10 +416,7 @@ class SowService:
         return [_assemble_sow_schema(v, geo_map) for v in versions]
 
     def get_opportunities(self, tenant_schema: str, sow_id: int) -> List[OpportunitySchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
-
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
         opportunities = self.repo.get_opportunities_for_sow(tenant_schema, sow_sid)
         if not opportunities:
@@ -305,7 +424,6 @@ class SowService:
 
         opp_oids = [o.oid for o in opportunities if o.oid is not None]
 
-        # Topic M2M join rows → {oid: [tid, ...]}
         t2o_rows = self.repo.get_topic2opportunity_rows(tenant_schema, opp_oids)
         tids_by_opp: Dict[int, List[int]] = defaultdict(list)
         for row in t2o_rows:
@@ -316,7 +434,6 @@ class SowService:
         topics_by_tid: Dict[int, Topic] = {t.tid: t for t in topics if t.tid is not None}
         topic_id_strings = [t.topic_id for t in topics]
 
-        # Batch-fetch all topic-level related data
         topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, all_topic_tids)
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
         topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
@@ -325,12 +442,10 @@ class SowService:
         )
         t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, all_topic_tids)
 
-        # Trends referenced by topics
         trend_ssids = list({t.ssid for t in topics if t.ssid is not None})
         trends = self.repo.get_trends_by_ssids(tenant_schema, trend_ssids)
         trend_id_strings = [tr.trend_id for tr in trends]
 
-        # Batch-fetch all trend-level related data (for the trend nested in each topic)
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
         trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
@@ -339,166 +454,54 @@ class SowService:
         )
         related_topics_for_trends = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
 
-        # ---- Build lookup maps ----
+        topic_sources_by_score = _build_sources_map(topic_sources)
+        topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
+        topic_global_delta_by_id, topic_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
 
-        topic_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in topic_sources:
-            topic_sources_by_score[src.maturity_score_id].append(src)
-
-        topic_non_global_by_tid: Dict[int, List[MaturityScore]] = defaultdict(list)
-        topic_global_by_tid: Dict[int, MaturityScore] = {}
-        for ms in topic_scores:
-            if ms.topic_id is None:
-                continue
-            if str(ms.category) == "global":
-                topic_global_by_tid.setdefault(ms.topic_id, ms)
-            else:
-                topic_non_global_by_tid[ms.topic_id].append(ms)
-
-        topic_non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        topic_global_delta_by_id: Dict[str, MaturityScoreDelta] = {}
-        for delta in topic_deltas:
-            if delta.topic_id is None:
-                continue
-            if str(delta.category) == "global":
-                topic_global_delta_by_id.setdefault(delta.topic_id, delta)
-            else:
-                topic_non_global_deltas_by_id[delta.topic_id].append(delta)
-
-        drivers_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+        drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:  # type: ignore[assignment]
-            drivers_by_topic_tid[row.tid].append(row.did)  # type: ignore[attr-defined]
+            drivers_by_tid[row.tid].append(row.did)  # type: ignore[attr-defined]
 
-        trend_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in trend_sources:
-            trend_sources_by_score[src.maturity_score_id].append(src)
+        trend_sources_by_score = _build_sources_map(trend_sources)
+        trend_global_by_ssid, trend_non_global_by_ssid = _split_trend_scores(trend_scores)
+        trend_global_delta_by_id, trend_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
 
-        trend_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
-        trend_global_by_ssid: Dict[int, MaturityScore] = {}
-        for ms in trend_scores:
-            if ms.trend_id is None:
-                continue
-            if str(ms.category) == "global":
-                trend_global_by_ssid.setdefault(ms.trend_id, ms)
-            else:
-                trend_non_global_by_ssid[ms.trend_id].append(ms)
-
-        trend_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        trend_global_delta: Dict[str, MaturityScoreDelta] = {}
-        for delta in trend_deltas:
-            if delta.trend_id is None:
-                continue
-            if str(delta.category) == "global":
-                trend_global_delta.setdefault(delta.trend_id, delta)
-            else:
-                trend_non_global_deltas[delta.trend_id].append(delta)
-
-        rel_topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+        rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for rt in related_topics_for_trends:
             if rt.ssid is not None:
-                rel_topics_by_trend_ssid[rt.ssid].append(rt)
-
-        # ---- Assemble trend schemas ----
-
-        def _build_trend(trend: Trend) -> TrendSchema:
-            ssid = trend.ssid or 0
-            ms_list = [
-                _maturity_score_schema(ms, trend_sources_by_score.get(ms.id or 0, []))
-                for ms in sorted(
-                    trend_non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category)
-                )
-            ]
-            g_ms = trend_global_by_ssid.get(ssid)
-            g_delta = trend_global_delta.get(trend.trend_id)
-            return TrendSchema(
-                ssid=trend.ssid,
-                sow=trend.sid,
-                load_date=trend.load_date,
-                trend_id=trend.trend_id,
-                trend_name=trend.trend_name,
-                trend_description=trend.trend_description,
-                shift_id=trend.shift_id,
-                shift_name=trend.shift_name,
-                shift_description=trend.shift_description,
-                trend_image_s3_uri=trend.trend_image_s3_uri,
-                masterfile_version=trend.masterfile_version,
-                for_deletion=trend.for_deletion,
-                new_discovery=trend.new_discovery,
-                maturity_scores=ms_list,
-                maturity_scores_deltas=[
-                    MaturityScoreDeltaSchema.model_validate(d)
-                    for d in sorted(
-                        trend_non_global_deltas.get(trend.trend_id, []),
-                        key=lambda x: str(x.category),
-                    )
-                ],
-                global_maturity_score=(
-                    _maturity_score_schema(g_ms, trend_sources_by_score.get(g_ms.id or 0, []))
-                    if g_ms
-                    else None
-                ),
-                global_maturity_score_delta=(
-                    MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                ),
-                related_topics=[
-                    UnlinkedTopicSchema.model_validate(rt)
-                    for rt in rel_topics_by_trend_ssid.get(ssid, [])
-                ],
-            )
+                rel_topics_by_ssid[rt.ssid].append(rt)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _build_trend(tr) for tr in trends if tr.ssid is not None
+            tr.ssid: _assemble_trend_schema(
+                tr,
+                trend_sources_by_score,
+                trend_global_by_ssid,
+                trend_non_global_by_ssid,
+                trend_global_delta_by_id,
+                trend_non_global_deltas_by_id,
+                rel_topics_by_ssid,
+            )
+            for tr in trends
+            if tr.ssid is not None
         }
 
-        # ---- Assemble topic schemas ----
-
-        def _build_topic(topic: Topic) -> TopicSchema:
-            tid = topic.tid or 0
-            g_ms = topic_global_by_tid.get(tid)
-            g_delta = topic_global_delta_by_id.get(topic.topic_id)
-            return TopicSchema(
-                tid=topic.tid,
-                sow=topic.sid,
-                load_date=topic.load_date,
-                topic_id=topic.topic_id,
-                topic_name=topic.topic_name,
-                topic_status=topic.topic_status,
-                topic_description=topic.topic_description,
-                topic_image_s3_uri=topic.topic_image_s3_uri,
-                masterfile_version=topic.masterfile_version,
-                for_deletion=topic.for_deletion,
-                new_discovery=topic.new_discovery,
-                trend=trend_schema_by_ssid.get(topic.ssid or 0),
-                driver=drivers_by_topic_tid.get(tid, []),
-                maturity_scores=[
-                    _maturity_score_schema(ms, topic_sources_by_score.get(ms.id or 0, []))
-                    for ms in sorted(
-                        topic_non_global_by_tid.get(tid, []), key=lambda x: str(x.category)
-                    )
-                ],
-                maturity_scores_deltas=[
-                    MaturityScoreDeltaSchema.model_validate(d)
-                    for d in sorted(
-                        topic_non_global_deltas_by_id.get(topic.topic_id, []),
-                        key=lambda x: str(x.category),
-                    )
-                ],
-                global_maturity_score=(
-                    _maturity_score_schema(g_ms, topic_sources_by_score.get(g_ms.id or 0, []))
-                    if g_ms
-                    else None
-                ),
-                global_maturity_score_delta=(
-                    MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                ),
-            )
-
-        # ---- Assemble opportunity schemas ----
         result: List[OpportunitySchema] = []
         for opp in opportunities:
             opp_tids = tids_by_opp.get(opp.oid or 0, [])
             opp_topics = [topics_by_tid[tid] for tid in opp_tids if tid in topics_by_tid]
-            topic_schemas = [_build_topic(t) for t in opp_topics]
+            topic_schemas = [
+                _assemble_topic_schema(
+                    t,
+                    topic_sources_by_score,
+                    topic_global_by_tid,
+                    topic_non_global_by_tid,
+                    topic_global_delta_by_id,
+                    topic_non_global_deltas_by_id,
+                    trend_schema_by_ssid,
+                    drivers_by_tid,
+                )
+                for t in opp_topics
+            ]
             result.append(
                 OpportunitySchema(
                     oid=opp.oid,
@@ -522,10 +525,7 @@ class SowService:
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[TopicSchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
-
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
         topics = self.repo.get_topics_for_sow(tenant_schema, sow_sid)
         if not topics:
@@ -534,7 +534,6 @@ class SowService:
         topic_tids = [t.tid for t in topics if t.tid is not None]
         topic_id_strings = [t.topic_id for t in topics]
 
-        # Batch-fetch topic-level data
         topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
         topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
@@ -543,7 +542,6 @@ class SowService:
         )
         t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
 
-        # Batch-fetch trend-level data (embedded trend inside each topic)
         trend_ssids = list({t.ssid for t in topics if t.ssid is not None})
         trends = self.repo.get_trends_by_ssids(tenant_schema, trend_ssids)
         trend_id_strings = [tr.trend_id for tr in trends]
@@ -554,113 +552,38 @@ class SowService:
             tenant_schema, sow_sid, trend_id_strings
         )
 
-        # ---- Build lookup maps ----
+        topic_sources_by_score = _build_sources_map(topic_sources)
+        topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
+        topic_global_delta_by_id, topic_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
 
-        topic_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in topic_sources:
-            topic_sources_by_score[src.maturity_score_id].append(src)
-
-        topic_non_global_by_tid: Dict[int, List[MaturityScore]] = defaultdict(list)
-        topic_global_by_tid: Dict[int, MaturityScore] = {}
-        for ms in topic_scores:
-            if ms.topic_id is None:
-                continue
-            if str(ms.category) == "global":
-                topic_global_by_tid.setdefault(ms.topic_id, ms)
-            else:
-                topic_non_global_by_tid[ms.topic_id].append(ms)
-
-        topic_non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        topic_global_delta_by_id: Dict[str, MaturityScoreDelta] = {}
-        for delta in topic_deltas:
-            if delta.topic_id is None:
-                continue
-            if str(delta.category) == "global":
-                topic_global_delta_by_id.setdefault(delta.topic_id, delta)
-            else:
-                topic_non_global_deltas_by_id[delta.topic_id].append(delta)
-
-        drivers_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+        drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:
-            drivers_by_topic_tid[row.tid].append(row.did)
+            drivers_by_tid[row.tid].append(row.did)
 
-        trend_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in trend_sources:
-            trend_sources_by_score[src.maturity_score_id].append(src)
+        trend_sources_by_score = _build_sources_map(trend_sources)
+        trend_global_by_ssid, trend_non_global_by_ssid = _split_trend_scores(trend_scores)
+        trend_global_delta_by_id, trend_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
 
-        trend_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
-        trend_global_by_ssid: Dict[int, MaturityScore] = {}
-        for ms in trend_scores:
-            if ms.trend_id is None:
-                continue
-            if str(ms.category) == "global":
-                trend_global_by_ssid.setdefault(ms.trend_id, ms)
-            else:
-                trend_non_global_by_ssid[ms.trend_id].append(ms)
-
-        trend_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        trend_global_delta: Dict[str, MaturityScoreDelta] = {}
-        for delta in trend_deltas:
-            if delta.trend_id is None:
-                continue
-            if str(delta.category) == "global":
-                trend_global_delta.setdefault(delta.trend_id, delta)
-            else:
-                trend_non_global_deltas[delta.trend_id].append(delta)
-
-        # Reuse already-loaded topics for trend's related_topics (no extra DB call)
+        # Reuse already-loaded topics for each trend's related_topics (no extra DB call)
         topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for t in topics:
             if t.ssid is not None:
                 topics_by_trend_ssid[t.ssid].append(t)
 
-        trend_schema_by_ssid: Dict[int, TrendSchema] = {}
-        for tr in trends:
-            ssid = tr.ssid or 0
-            g_ms = trend_global_by_ssid.get(ssid)
-            g_delta = trend_global_delta.get(tr.trend_id)
-            trend_schema_by_ssid[ssid] = TrendSchema(
-                ssid=tr.ssid,
-                sow=tr.sid,
-                load_date=tr.load_date,
-                trend_id=tr.trend_id,
-                trend_name=tr.trend_name,
-                trend_description=tr.trend_description,
-                shift_id=tr.shift_id,
-                shift_name=tr.shift_name,
-                shift_description=tr.shift_description,
-                trend_image_s3_uri=tr.trend_image_s3_uri,
-                masterfile_version=tr.masterfile_version,
-                for_deletion=tr.for_deletion,
-                new_discovery=tr.new_discovery,
-                maturity_scores=[
-                    _maturity_score_schema(ms, trend_sources_by_score.get(ms.id or 0, []))
-                    for ms in sorted(
-                        trend_non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category)
-                    )
-                ],
-                maturity_scores_deltas=[
-                    MaturityScoreDeltaSchema.model_validate(d)
-                    for d in sorted(
-                        trend_non_global_deltas.get(tr.trend_id, []),
-                        key=lambda x: str(x.category),
-                    )
-                ],
-                global_maturity_score=(
-                    _maturity_score_schema(g_ms, trend_sources_by_score.get(g_ms.id or 0, []))
-                    if g_ms
-                    else None
-                ),
-                global_maturity_score_delta=(
-                    MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                ),
-                related_topics=[
-                    UnlinkedTopicSchema.model_validate(rt)
-                    for rt in topics_by_trend_ssid.get(ssid, [])
-                ],
+        trend_schema_by_ssid: Dict[int, TrendSchema] = {
+            tr.ssid: _assemble_trend_schema(
+                tr,
+                trend_sources_by_score,
+                trend_global_by_ssid,
+                trend_non_global_by_ssid,
+                trend_global_delta_by_id,
+                trend_non_global_deltas_by_id,
+                topics_by_trend_ssid,
             )
+            for tr in trends
+            if tr.ssid is not None
+        }
 
-        # ---- Assemble, filter, and sort topic schemas ----
         result: List[TopicSchema] = []
         for topic in topics:
             tid = topic.tid or 0
@@ -673,43 +596,16 @@ class SowService:
                 if (g_ms.threshold if g_ms else None) != maturity_level:
                     continue
 
-            g_delta = topic_global_delta_by_id.get(topic.topic_id)
             result.append(
-                TopicSchema(
-                    tid=topic.tid,
-                    sow=topic.sid,
-                    load_date=topic.load_date,
-                    topic_id=topic.topic_id,
-                    topic_name=topic.topic_name,
-                    topic_status=topic.topic_status,
-                    topic_description=topic.topic_description,
-                    topic_image_s3_uri=topic.topic_image_s3_uri,
-                    masterfile_version=topic.masterfile_version,
-                    for_deletion=topic.for_deletion,
-                    new_discovery=topic.new_discovery,
-                    trend=trend_schema_by_ssid.get(topic.ssid or 0),
-                    driver=drivers_by_topic_tid.get(tid, []),
-                    maturity_scores=[
-                        _maturity_score_schema(ms, topic_sources_by_score.get(ms.id or 0, []))
-                        for ms in sorted(
-                            topic_non_global_by_tid.get(tid, []), key=lambda x: str(x.category)
-                        )
-                    ],
-                    maturity_scores_deltas=[
-                        MaturityScoreDeltaSchema.model_validate(d)
-                        for d in sorted(
-                            topic_non_global_deltas_by_id.get(topic.topic_id, []),
-                            key=lambda x: str(x.category),
-                        )
-                    ],
-                    global_maturity_score=(
-                        _maturity_score_schema(g_ms, topic_sources_by_score.get(g_ms.id or 0, []))
-                        if g_ms
-                        else None
-                    ),
-                    global_maturity_score_delta=(
-                        MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                    ),
+                _assemble_topic_schema(
+                    topic,
+                    topic_sources_by_score,
+                    topic_global_by_tid,
+                    topic_non_global_by_tid,
+                    topic_global_delta_by_id,
+                    topic_non_global_deltas_by_id,
+                    trend_schema_by_ssid,
+                    drivers_by_tid,
                 )
             )
 
@@ -735,10 +631,7 @@ class SowService:
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[TrendSchema]:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
-
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
         trends = self.repo.get_trends_for_sow(tenant_schema, sow_sid)
         if not trends:
@@ -747,7 +640,6 @@ class SowService:
         trend_ssids = [t.ssid for t in trends if t.ssid is not None]
         trend_id_strings = [t.trend_id for t in trends]
 
-        # Batch-fetch
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
         trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
@@ -756,42 +648,18 @@ class SowService:
         )
         related_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
 
-        # Topics needed for driver_count (distinct drivers across each trend's topics)
         all_related_tids = [t.tid for t in related_topics if t.tid is not None]
         t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, all_related_tids)
 
-        # ---- Build lookup maps ----
+        sources_by_score = _build_sources_map(trend_sources)
+        global_by_ssid, non_global_by_ssid = _split_trend_scores(trend_scores)
+        global_delta_by_id, non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
 
-        trend_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-        for src in trend_sources:
-            trend_sources_by_score[src.maturity_score_id].append(src)
-
-        trend_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
-        trend_global_by_ssid: Dict[int, MaturityScore] = {}
-        for ms in trend_scores:
-            if ms.trend_id is None:
-                continue
-            if str(ms.category) == "global":
-                trend_global_by_ssid.setdefault(ms.trend_id, ms)
-            else:
-                trend_non_global_by_ssid[ms.trend_id].append(ms)
-
-        trend_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-        trend_global_delta: Dict[str, MaturityScoreDelta] = {}
-        for delta in trend_deltas:
-            if delta.trend_id is None:
-                continue
-            if str(delta.category) == "global":
-                trend_global_delta.setdefault(delta.trend_id, delta)
-            else:
-                trend_non_global_deltas[delta.trend_id].append(delta)
-
-        rel_topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+        rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for rt in related_topics:
             if rt.ssid is not None:
-                rel_topics_by_trend_ssid[rt.ssid].append(rt)
+                rel_topics_by_ssid[rt.ssid].append(rt)
 
-        # driver_count: distinct driver ids across all topics of each trend
         dids_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:
             dids_by_topic_tid[row.tid].append(row.did)
@@ -801,11 +669,10 @@ class SowService:
             if rt.tid is not None and rt.ssid is not None:
                 topic_tids_by_trend_ssid[rt.ssid].append(rt.tid)
 
-        # ---- Assemble, filter, and sort trend schemas ----
         result: List[TrendSchema] = []
         for trend in trends:
             ssid = trend.ssid or 0
-            g_ms = trend_global_by_ssid.get(ssid)
+            g_ms = global_by_ssid.get(ssid)
 
             if maturity_level == "New":
                 if not trend.new_discovery:
@@ -814,7 +681,6 @@ class SowService:
                 if (g_ms.threshold if g_ms else None) != maturity_level:
                     continue
 
-            g_delta = trend_global_delta.get(trend.trend_id)
             driver_count = len(
                 {
                     did
@@ -823,46 +689,15 @@ class SowService:
                 }
             )
             result.append(
-                TrendSchema(
-                    ssid=trend.ssid,
-                    sow=trend.sid,
-                    load_date=trend.load_date,
-                    trend_id=trend.trend_id,
-                    trend_name=trend.trend_name,
-                    trend_description=trend.trend_description,
-                    shift_id=trend.shift_id,
-                    shift_name=trend.shift_name,
-                    shift_description=trend.shift_description,
-                    trend_image_s3_uri=trend.trend_image_s3_uri,
-                    masterfile_version=trend.masterfile_version,
-                    for_deletion=trend.for_deletion,
-                    new_discovery=trend.new_discovery,
+                _assemble_trend_schema(
+                    trend,
+                    sources_by_score,
+                    global_by_ssid,
+                    non_global_by_ssid,
+                    global_delta_by_id,
+                    non_global_deltas_by_id,
+                    rel_topics_by_ssid,
                     driver_count=driver_count,
-                    maturity_scores=[
-                        _maturity_score_schema(ms, trend_sources_by_score.get(ms.id or 0, []))
-                        for ms in sorted(
-                            trend_non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category)
-                        )
-                    ],
-                    maturity_scores_deltas=[
-                        MaturityScoreDeltaSchema.model_validate(d)
-                        for d in sorted(
-                            trend_non_global_deltas.get(trend.trend_id, []),
-                            key=lambda x: str(x.category),
-                        )
-                    ],
-                    global_maturity_score=(
-                        _maturity_score_schema(g_ms, trend_sources_by_score.get(g_ms.id or 0, []))
-                        if g_ms
-                        else None
-                    ),
-                    global_maturity_score_delta=(
-                        MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                    ),
-                    related_topics=[
-                        UnlinkedTopicSchema.model_validate(rt)
-                        for rt in rel_topics_by_trend_ssid.get(ssid, [])
-                    ],
                 )
             )
 
@@ -891,9 +726,7 @@ class SowService:
         page: int = 1,
         limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
     ) -> ForesightResponse:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
 
         if not sow.cs_sow_id:
             return ForesightResponse(total=0, limit=limit, hasNext=False, hasPrev=False)
@@ -913,9 +746,7 @@ class SowService:
         page: int = 1,
         limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
     ) -> ForesightResponse:
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
-        if sow is None:
-            raise HTTPException(status_code=404, detail="SOW not available")
+        sow = self._get_sow_or_404(tenant_schema, sow_id)
 
         if not sow.cs_sow_id:
             return ForesightResponse(total=0, limit=limit, hasNext=False, hasPrev=False)
@@ -952,7 +783,6 @@ class SowService:
                 total=total, limit=limit, hasNext=has_next, hasPrev=has_prev, weeklyInsights=[]
             )
 
-        # ---- Sources ----
         insight_ids = [i.id for i in insights if i.id is not None]
         insight_id_set = set(insight_ids)
         raw_sources = self.repo.get_insight_sources_for_insight_ids(tenant_schema, insight_ids)
@@ -963,7 +793,6 @@ class SowService:
                     if iid in insight_id_set:
                         sources_by_insight[iid].append(isrc)
 
-        # ---- Collect entity IDs by type ----
         topic_entity_ids = list({i.entity_id for i in insights if i.entity_type == "topic"})
         trend_entity_ids = list({i.entity_id for i in insights if i.entity_type == "trend"})
 
@@ -985,6 +814,7 @@ class SowService:
                     tenant_schema, sow_sid, topic_id_strings
                 )
                 t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
+
                 topic_trend_ssids = list({t.ssid for t in pred_topics if t.ssid is not None})
                 topic_trends = self.repo.get_trends_by_ssids(tenant_schema, topic_trend_ssids)
                 topic_trend_id_strings = [tr.trend_id for tr in topic_trends]
@@ -999,155 +829,50 @@ class SowService:
                     tenant_schema, sow_sid, topic_trend_id_strings
                 )
 
-                t_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-                for src in t_sources:
-                    t_sources_by_score[src.maturity_score_id].append(src)
+                t_sources_by_score = _build_sources_map(t_sources)
+                t_global_by_tid, t_non_global_by_tid = _split_topic_scores(topic_scores)
+                t_global_delta_by_id, t_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
 
-                t_non_global_by_tid: Dict[int, List[MaturityScore]] = defaultdict(list)
-                t_global_by_tid: Dict[int, MaturityScore] = {}
-                for ms in topic_scores:
-                    if ms.topic_id is None:
-                        continue
-                    if str(ms.category) == "global":
-                        t_global_by_tid.setdefault(ms.topic_id, ms)
-                    else:
-                        t_non_global_by_tid[ms.topic_id].append(ms)
-
-                t_non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-                t_global_delta_by_id: Dict[str, MaturityScoreDelta] = {}
-                for delta in topic_deltas:
-                    if delta.topic_id is None:
-                        continue
-                    if str(delta.category) == "global":
-                        t_global_delta_by_id.setdefault(delta.topic_id, delta)
-                    else:
-                        t_non_global_deltas_by_id[delta.topic_id].append(delta)
-
-                drivers_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+                drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
                 for row in t2d_rows:
-                    drivers_by_topic_tid[row.tid].append(row.did)
+                    drivers_by_tid[row.tid].append(row.did)
 
-                tt_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-                for src in topic_trend_sources:
-                    tt_sources_by_score[src.maturity_score_id].append(src)
-
-                tt_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
-                tt_global_by_ssid: Dict[int, MaturityScore] = {}
-                for ms in topic_trend_scores:
-                    if ms.trend_id is None:
-                        continue
-                    if str(ms.category) == "global":
-                        tt_global_by_ssid.setdefault(ms.trend_id, ms)
-                    else:
-                        tt_non_global_by_ssid[ms.trend_id].append(ms)
-
-                tt_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-                tt_global_delta: Dict[str, MaturityScoreDelta] = {}
-                for delta in topic_trend_deltas:
-                    if delta.trend_id is None:
-                        continue
-                    if str(delta.category) == "global":
-                        tt_global_delta.setdefault(delta.trend_id, delta)
-                    else:
-                        tt_non_global_deltas[delta.trend_id].append(delta)
+                tt_sources_by_score = _build_sources_map(topic_trend_sources)
+                tt_global_by_ssid, tt_non_global_by_ssid = _split_trend_scores(topic_trend_scores)
+                tt_global_delta_by_id, tt_non_global_deltas_by_id = _split_trend_deltas(
+                    topic_trend_deltas
+                )
 
                 topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
                 for t in pred_topics:
                     if t.ssid is not None:
                         topics_by_trend_ssid[t.ssid].append(t)
 
-                trend_schema_by_ssid: Dict[int, TrendSchema] = {}
-                for tr in topic_trends:
-                    ssid = tr.ssid or 0
-                    g_ms = tt_global_by_ssid.get(ssid)
-                    g_delta = tt_global_delta.get(tr.trend_id)
-                    trend_schema_by_ssid[ssid] = TrendSchema(
-                        ssid=tr.ssid,
-                        sow=tr.sid,
-                        load_date=tr.load_date,
-                        trend_id=tr.trend_id,
-                        trend_name=tr.trend_name,
-                        trend_description=tr.trend_description,
-                        shift_id=tr.shift_id,
-                        shift_name=tr.shift_name,
-                        shift_description=tr.shift_description,
-                        trend_image_s3_uri=tr.trend_image_s3_uri,
-                        masterfile_version=tr.masterfile_version,
-                        for_deletion=tr.for_deletion,
-                        new_discovery=tr.new_discovery,
-                        maturity_scores=[
-                            _maturity_score_schema(ms, tt_sources_by_score.get(ms.id or 0, []))
-                            for ms in sorted(
-                                tt_non_global_by_ssid.get(ssid, []),
-                                key=lambda x: str(x.category),
-                            )
-                        ],
-                        maturity_scores_deltas=[
-                            MaturityScoreDeltaSchema.model_validate(d)
-                            for d in sorted(
-                                tt_non_global_deltas.get(tr.trend_id, []),
-                                key=lambda x: str(x.category),
-                            )
-                        ],
-                        global_maturity_score=(
-                            _maturity_score_schema(g_ms, tt_sources_by_score.get(g_ms.id or 0, []))
-                            if g_ms
-                            else None
-                        ),
-                        global_maturity_score_delta=(
-                            MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
-                        ),
-                        related_topics=[
-                            UnlinkedTopicSchema.model_validate(rt)
-                            for rt in topics_by_trend_ssid.get(ssid, [])
-                        ],
+                trend_schema_by_ssid: Dict[int, TrendSchema] = {
+                    tr.ssid: _assemble_trend_schema(
+                        tr,
+                        tt_sources_by_score,
+                        tt_global_by_ssid,
+                        tt_non_global_by_ssid,
+                        tt_global_delta_by_id,
+                        tt_non_global_deltas_by_id,
+                        topics_by_trend_ssid,
                     )
+                    for tr in topic_trends
+                    if tr.ssid is not None
+                }
 
                 for t in pred_topics:
-                    tid = t.tid or 0
-                    g_ms = t_global_by_tid.get(tid)
-                    g_delta = t_global_delta_by_id.get(t.topic_id)
                     topic_schema_by_topic_id[t.topic_id].append(
-                        TopicSchema(
-                            tid=t.tid,
-                            sow=t.sid,
-                            load_date=t.load_date,
-                            topic_id=t.topic_id,
-                            topic_name=t.topic_name,
-                            topic_status=t.topic_status,
-                            topic_description=t.topic_description,
-                            topic_image_s3_uri=t.topic_image_s3_uri,
-                            masterfile_version=t.masterfile_version,
-                            for_deletion=t.for_deletion,
-                            new_discovery=t.new_discovery,
-                            trend=trend_schema_by_ssid.get(t.ssid or 0),
-                            driver=drivers_by_topic_tid.get(tid, []),
-                            maturity_scores=[
-                                _maturity_score_schema(ms, t_sources_by_score.get(ms.id or 0, []))
-                                for ms in sorted(
-                                    t_non_global_by_tid.get(tid, []),
-                                    key=lambda x: str(x.category),
-                                )
-                            ],
-                            maturity_scores_deltas=[
-                                MaturityScoreDeltaSchema.model_validate(d)
-                                for d in sorted(
-                                    t_non_global_deltas_by_id.get(t.topic_id, []),
-                                    key=lambda x: str(x.category),
-                                )
-                            ],
-                            global_maturity_score=(
-                                _maturity_score_schema(
-                                    g_ms, t_sources_by_score.get(g_ms.id or 0, [])
-                                )
-                                if g_ms
-                                else None
-                            ),
-                            global_maturity_score_delta=(
-                                MaturityScoreDeltaSchema.model_validate(g_delta)
-                                if g_delta
-                                else None
-                            ),
+                        _assemble_topic_schema(
+                            t,
+                            t_sources_by_score,
+                            t_global_by_tid,
+                            t_non_global_by_tid,
+                            t_global_delta_by_id,
+                            t_non_global_deltas_by_id,
+                            trend_schema_by_ssid,
+                            drivers_by_tid,
                         )
                     )
 
@@ -1172,34 +897,16 @@ class SowService:
                 rt_tids = [rt.tid for rt in rel_topics if rt.tid is not None]
                 t2d_for_trends = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, rt_tids)
 
-                tr_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
-                for src in tr_sources:
-                    tr_sources_by_score[src.maturity_score_id].append(src)
+                tr_sources_by_score = _build_sources_map(tr_sources)
+                tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(trend_scores)
+                tr_global_delta_by_id, tr_non_global_deltas_by_id = _split_trend_deltas(
+                    trend_deltas
+                )
 
-                tr_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
-                tr_global_by_ssid: Dict[int, MaturityScore] = {}
-                for ms in trend_scores:
-                    if ms.trend_id is None:
-                        continue
-                    if str(ms.category) == "global":
-                        tr_global_by_ssid.setdefault(ms.trend_id, ms)
-                    else:
-                        tr_non_global_by_ssid[ms.trend_id].append(ms)
-
-                tr_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
-                tr_global_delta: Dict[str, MaturityScoreDelta] = {}
-                for delta in trend_deltas:
-                    if delta.trend_id is None:
-                        continue
-                    if str(delta.category) == "global":
-                        tr_global_delta.setdefault(delta.trend_id, delta)
-                    else:
-                        tr_non_global_deltas[delta.trend_id].append(delta)
-
-                rel_topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+                rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
                 for rt in rel_topics:
                     if rt.ssid is not None:
-                        rel_topics_by_trend_ssid[rt.ssid].append(rt)
+                        rel_topics_by_ssid[rt.ssid].append(rt)
 
                 dids_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
                 for row in t2d_for_trends:
@@ -1212,8 +919,6 @@ class SowService:
 
                 for tr in pred_trends:
                     ssid = tr.ssid or 0
-                    g_ms = tr_global_by_ssid.get(ssid)
-                    g_delta = tr_global_delta.get(tr.trend_id)
                     driver_count = len(
                         {
                             did
@@ -1222,51 +927,15 @@ class SowService:
                         }
                     )
                     trend_schema_by_trend_id[tr.trend_id].append(
-                        TrendSchema(
-                            ssid=tr.ssid,
-                            sow=tr.sid,
-                            load_date=tr.load_date,
-                            trend_id=tr.trend_id,
-                            trend_name=tr.trend_name,
-                            trend_description=tr.trend_description,
-                            shift_id=tr.shift_id,
-                            shift_name=tr.shift_name,
-                            shift_description=tr.shift_description,
-                            trend_image_s3_uri=tr.trend_image_s3_uri,
-                            masterfile_version=tr.masterfile_version,
-                            for_deletion=tr.for_deletion,
-                            new_discovery=tr.new_discovery,
+                        _assemble_trend_schema(
+                            tr,
+                            tr_sources_by_score,
+                            tr_global_by_ssid,
+                            tr_non_global_by_ssid,
+                            tr_global_delta_by_id,
+                            tr_non_global_deltas_by_id,
+                            rel_topics_by_ssid,
                             driver_count=driver_count,
-                            maturity_scores=[
-                                _maturity_score_schema(ms, tr_sources_by_score.get(ms.id or 0, []))
-                                for ms in sorted(
-                                    tr_non_global_by_ssid.get(ssid, []),
-                                    key=lambda x: str(x.category),
-                                )
-                            ],
-                            maturity_scores_deltas=[
-                                MaturityScoreDeltaSchema.model_validate(d)
-                                for d in sorted(
-                                    tr_non_global_deltas.get(tr.trend_id, []),
-                                    key=lambda x: str(x.category),
-                                )
-                            ],
-                            global_maturity_score=(
-                                _maturity_score_schema(
-                                    g_ms, tr_sources_by_score.get(g_ms.id or 0, [])
-                                )
-                                if g_ms
-                                else None
-                            ),
-                            global_maturity_score_delta=(
-                                MaturityScoreDeltaSchema.model_validate(g_delta)
-                                if g_delta
-                                else None
-                            ),
-                            related_topics=[
-                                UnlinkedTopicSchema.model_validate(rt)
-                                for rt in rel_topics_by_trend_ssid.get(ssid, [])
-                            ],
                         )
                     )
 

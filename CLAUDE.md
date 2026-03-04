@@ -38,7 +38,7 @@ routes/ → services/ → repositories/ → database/
 - **`database/`**: DB sessions, models, and schemas.
   - `public_models/`: SQLModel definitions for the public PostgreSQL schema.
   - `tenant_models/`: SQLModel definitions for per-tenant schemas.
-  - `schemas/`: Pydantic DTO models for API responses.
+  - `schemas/`: Pydantic DTO models for API responses (`sow`, `topic`, `trend`, `shift`, `driver`, `opportunity`, `maturity`, `insight`, `brand`, `company`, `geography`, `permissions`).
   - `session.py`: `DBSession` provides `session()` (public schema) and `tenant_session(tenant_schema)` (sets `search_path`).
   - `manager.py`: Generic DB helpers (`get_all`, `get_by_id`, `get_topics`, etc.).
 
@@ -48,16 +48,33 @@ The system uses PostgreSQL schema-based multi-tenancy. The JWT payload's `orgId`
 
 ### Authentication
 
-JWT validation is centralized in `jwt_validator.py`. All protected endpoints use `validate_jwt` as a FastAPI dependency. The JWT payload must include `orgId` for tenant-scoped operations.
+JWT validation is centralized in `jwt_validator.py`. Two dependencies are exported:
+
+- **`validate_jwt`** — validates the Bearer token, returns the raw JWT payload `Dict[str, Any]`.
+- **`get_tenant_schema`** — wraps `validate_jwt`, extracts `orgId`, raises HTTP 400 if missing, returns `str`.
+
+All protected endpoints use `get_tenant_schema` directly:
+
+```python
+def my_endpoint(
+    tenant_schema: str = Depends(get_tenant_schema),
+    service: MyService = Depends(get_my_service),
+) -> JSONResponse:
+    ...
+```
+
+Service methods receive `tenant_schema: str` (never `Optional[str]`). The 400 guard lives exclusively in `get_tenant_schema`.
 
 ### Testing pattern
 
-Tests override FastAPI dependencies to inject fakes:
+Tests override `validate_jwt` (not `get_tenant_schema`). Because `get_tenant_schema` depends on `validate_jwt`, the override cascades automatically:
 
 ```python
 app.dependency_overrides[validate_jwt] = lambda: {"orgId": "test_schema"}
-app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())
+app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 ```
+
+For services with many repo methods, define a `BaseFakeRepo` class with all methods returning empty defaults, then subclass it per test to override only what is needed.
 
 ## Style & Tooling
 
@@ -77,3 +94,5 @@ Pre-commit hooks run black, isort, ruff, mypy, and pytest on every commit (`fail
 - Prefer explicit transactions; close sessions promptly.
 - Feature branches: `feature/<short-desc>`, bugfix branches: `fix/<short-desc>`.
 - DB schema changes require an Alembic migration in `migrations/`.
+- New endpoints are prefixed `api/v2/` (FastAPI), migrated from the legacy Django `api/` prefix.
+- When querying a PostgreSQL JSON/JSONB array column for membership, use `cast(col, JSONB).contains([value])` (requires `sqlalchemy.dialects.postgresql.JSONB` and `sqlalchemy.cast`).

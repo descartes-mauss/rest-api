@@ -3,6 +3,8 @@
 Queries span two schemas:
   - Public schema  : CIClient, Client, ClientCompanyProfile
   - Tenant schema  : Brand, ProductLine, BusinessCategory, CustomerSegment
+
+Brand-related tenant queries are delegated to BrandRepository to avoid duplication.
 """
 
 from typing import List, Optional
@@ -11,12 +13,8 @@ from sqlmodel import select
 
 from database.db_session_provider import DBSessionProvider
 from database.public_models.models import CIClient, Client, ClientCompanyProfile
-from database.tenant_models.models import (
-    Brand,
-    BusinessCategory,
-    CustomerSegment,
-    ProductLine,
-)
+from database.tenant_models.models import Brand, BusinessCategory, CustomerSegment, ProductLine
+from repositories.brand_repository import BrandRepository
 
 
 class CompanyRepository:
@@ -24,6 +22,7 @@ class CompanyRepository:
 
     def __init__(self, db_provider: DBSessionProvider) -> None:
         self.db = db_provider
+        self._brand_repo = BrandRepository(db_provider)
 
     # ------------------------------------------------------------------
     # Public schema queries
@@ -55,42 +54,28 @@ class CompanyRepository:
             return session.exec(stmt).first()  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
-    # Tenant schema queries
+    # Tenant schema — brand queries (delegated to BrandRepository)
     # ------------------------------------------------------------------
 
     def get_brands(self, tenant_schema: str) -> List[Brand]:
         """Return all brands, distinct by brand_name, ordered alphabetically."""
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = (
-                select(Brand)
-                .distinct(Brand.brand_name)  # type: ignore[arg-type]
-                .order_by(Brand.brand_name)
-            )
-            return list(session.exec(stmt).all())
+        return self._brand_repo.get_brands(tenant_schema)
 
     def get_product_lines_by_brand_ids(
         self, tenant_schema: str, brand_ids: List[int]
     ) -> List[ProductLine]:
         """Return all ProductLine rows for the given brand IDs."""
-        if not brand_ids:
-            return []
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(ProductLine).where(
-                ProductLine.brand_id.in_(brand_ids)  # type: ignore[attr-defined]
-            )
-            return list(session.exec(stmt).all())
+        return self._brand_repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
 
     def get_business_categories_by_ids(
         self, tenant_schema: str, category_ids: List[int]
     ) -> List[BusinessCategory]:
         """Return BusinessCategory rows by ID (used to populate nested brand data)."""
-        if not category_ids:
-            return []
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(BusinessCategory).where(
-                BusinessCategory.id.in_(category_ids)  # type: ignore[union-attr]
-            )
-            return list(session.exec(stmt).all())
+        return self._brand_repo.get_business_categories_by_ids(tenant_schema, category_ids)
+
+    # ------------------------------------------------------------------
+    # Tenant schema — company-specific queries
+    # ------------------------------------------------------------------
 
     def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
         """Return all customer segments, distinct by name, ordered alphabetically."""
