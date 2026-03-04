@@ -1,11 +1,12 @@
 from datetime import datetime
+from uuid import UUID
 from decimal import Decimal
 from typing import Any, List, Optional
 
 from sqlalchemy import JSON, Column, Integer
 from sqlmodel import Field, SQLModel
 
-from database.tenant_models.enums import ExperimentType, MaturityCategory
+from database.tenant_models.enums import ConversationStatus, ExperimentType, MaturityCategory, SenderType, TenantUserStatus
 
 
 class TenantSow(SQLModel, table=True):
@@ -472,3 +473,94 @@ class Estimator(SQLModel, table=True):
     avr_annual_spend_step_by_step_reasoning: Optional[str] = None
     web_content_spend_estimator: Optional[List[Any]] = Field(default=None, sa_column=Column(JSON))
     customer_segment_market_size: Decimal
+
+
+# ---------------------------------------------------------------------------
+# TenantUser related models
+# ---------------------------------------------------------------------------
+
+
+class TenantUser(SQLModel, table=True):
+    __tablename__ = "client_interface_tenantuser"
+
+    id: UUID = Field(primary_key=True)
+    email: Optional[str] = None
+    display_name: str
+    status: TenantUserStatus
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    last_login_at: Optional[datetime] = None
+    locale: str
+    timezone: str
+    job_title: str
+    extra_metadata: Optional[dict[str, Any]] = Field(default=None, sa_column=Column("metadata", JSON))
+
+class TenantUserIdentity(SQLModel, table=True):
+    __tablename__ = "client_interface_tenantuseridentity"
+
+    id: UUID = Field(primary_key=True)
+    provider: str = Field(max_length=32)
+    subject: str = Field(max_length=255)
+    email: Optional[str] = Field(default=None, max_length=254)
+    raw_claims: dict[str, Any] = Field(sa_column=Column(JSON))
+    created_at: datetime
+    user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
+
+
+class TenantUserSession(SQLModel, table=True):
+    __tablename__ = "client_interface_usersession"
+
+    id: UUID = Field(primary_key=True)
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    user_agent: str
+    ip_hash: str
+    extra_metadata: dict[str, Any] = Field(sa_column=Column("metadata", JSON))
+    user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
+
+
+# ---------------------------------------------------------------------------
+# Conversation related models
+# ---------------------------------------------------------------------------
+
+
+class Conversation(SQLModel, table=True):
+    __tablename__ = "client_interface_conversation"
+
+    id: UUID = Field(primary_key=True)
+    title: str
+    status: ConversationStatus
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: Optional[datetime] = None
+    purge_at: Optional[datetime] = None
+    user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
+
+
+class ConversationSession(SQLModel, table=True):
+    __tablename__ = "client_interface_conversationsession"
+
+    id: UUID = Field(primary_key=True)
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    conversation_id: UUID = Field(foreign_key="client_interface_conversation.id")
+    user_session_id: Optional[UUID] = Field(
+        default=None, foreign_key="client_interface_usersession.id"
+    )
+
+
+class Message(SQLModel, table=True):
+    __tablename__ = "client_interface_conversationmessage"
+
+    id: UUID = Field(primary_key=True)
+    sender: SenderType
+    timestamp: datetime
+    sequence_number: int
+    content: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    content_text: str
+    conversation_id: UUID = Field(foreign_key="client_interface_conversation.id")
+    session_id: Optional[UUID] = Field(
+        default=None, foreign_key="client_interface_conversationsession.id"
+    )
+
