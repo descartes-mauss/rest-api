@@ -134,6 +134,15 @@ class SowRepository:
             )
             return list(session.exec(stmt).all())
 
+    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
+        """Return all non-deleted Topic rows for the given sow sid."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic).where(
+                Topic.sid == sow_sid,
+                Topic.for_deletion == False,  # noqa: E712
+            )
+            return list(session.exec(stmt).all())
+
     def get_topics_for_trends(self, tenant_schema: str, trend_ssids: List[int]) -> List[Topic]:
         """Return all non-deleted Topic rows for the given trend ssids."""
         if not trend_ssids:

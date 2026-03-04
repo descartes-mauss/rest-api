@@ -8,9 +8,13 @@ from database.schemas.driver import DriverSchema
 from database.schemas.opportunity import OpportunitySchema
 from database.schemas.shift import ShiftSchema
 from database.schemas.sow import SowSchema
+from database.schemas.topic import TopicSchema
+from database.schemas.trend import TrendSchema
 from jwt_validator import validate_jwt
 from repositories.sow_repository import SowRepository
 from services.sow_service import SowService
+
+_VALID_MATURITY_FILTERS = frozenset({"Emerging", "Growing", "Mature", "New", "All"})
 
 sow_router = APIRouter(prefix="/api/v2", tags=["sows"])
 
@@ -73,6 +77,38 @@ def get_sow_drivers(
     """Return all drivers for the given SOW, optionally sorted by name."""
     tenant_schema = authorization.get("orgId")
     result = service.get_drivers(tenant_schema, sow_id, sort=sort, order=order)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@sow_router.get("/sows/{sow_id}/topics", response_model=List[TopicSchema])
+def get_sow_topics(
+    sow_id: int,
+    maturity_level: str = Query(default="All"),
+    sort: Optional[str] = Query(default=None),
+    order: Optional[str] = Query(default=None),
+    authorization: Dict[str, Any] = Depends(validate_jwt),
+    service: SowService = Depends(get_sow_service),
+) -> JSONResponse:
+    """Return all topics for the given SOW, with optional maturity filtering and sorting."""
+    tenant_schema = authorization.get("orgId")
+    effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
+    result = service.get_topics(tenant_schema, sow_id, effective_maturity, sort=sort, order=order)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@sow_router.get("/sows/{sow_id}/trends", response_model=List[TrendSchema])
+def get_sow_trends(
+    sow_id: int,
+    maturity_level: str = Query(default="All"),
+    sort: Optional[str] = Query(default=None),
+    order: Optional[str] = Query(default=None),
+    authorization: Dict[str, Any] = Depends(validate_jwt),
+    service: SowService = Depends(get_sow_service),
+) -> JSONResponse:
+    """Return all trends for the given SOW, with optional maturity filtering and sorting."""
+    tenant_schema = authorization.get("orgId")
+    effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
+    result = service.get_trends(tenant_schema, sow_id, effective_maturity, sort=sort, order=order)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
 

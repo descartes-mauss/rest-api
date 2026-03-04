@@ -500,7 +500,10 @@ class TenantUser(SQLModel, table=True):
     locale: str
     timezone: str
     job_title: str
-    extra_metadata: Optional[dict[str, Any]] = Field(default=None, sa_column=Column("metadata", JSON))
+    extra_metadata: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column("metadata", JSON)
+    )
+
 
 class TenantUserIdentity(SQLModel, table=True):
     __tablename__ = "client_interface_tenantuseridentity"
@@ -569,4 +572,3 @@ class Message(SQLModel, table=True):
     session_id: Optional[UUID] = Field(
         default=None, foreign_key="client_interface_conversationsession.id"
     )
-
