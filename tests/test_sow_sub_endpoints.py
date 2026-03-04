@@ -184,7 +184,9 @@ def test_get_sow_shifts_success(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return sow
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return [trend]
 
         def get_maturity_scores_for_trend_ids(
@@ -210,7 +212,9 @@ def test_get_sow_shifts_success(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(
@@ -259,7 +263,9 @@ def test_get_sow_shifts_not_found(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return None
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -285,7 +291,9 @@ def test_get_sow_shifts_not_found(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(
@@ -318,7 +326,9 @@ def test_get_sow_shifts_empty_trends(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return sow
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -344,7 +354,9 @@ def test_get_sow_shifts_empty_trends(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(
@@ -385,7 +397,9 @@ def _full_fake_repo_for_drivers(
         ) -> Optional[TenantSow]:
             return sow
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -411,8 +425,13 @@ def _full_fake_repo_for_drivers(
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return geo_rows or []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
-            return list(drivers)
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
+            result = list(drivers)
+            if name_order:
+                result.sort(key=lambda d: d.driver_name.casefold(), reverse=(name_order == "desc"))
+            return result
 
         def get_topic_counts_for_drivers(
             self, tenant_schema: str, driver_dids: List[int]
@@ -459,7 +478,9 @@ def test_get_sow_drivers_not_found(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return None
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -485,7 +506,9 @@ def test_get_sow_drivers_not_found(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(
@@ -543,7 +566,9 @@ def test_get_sow_versions_success(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return sow
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -569,7 +594,9 @@ def test_get_sow_versions_success(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(
@@ -605,7 +632,9 @@ def test_get_sow_versions_not_found(client: TestClient) -> None:
         ) -> Optional[TenantSow]:
             return None
 
-        def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+        def get_trends_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Trend]:
             return []
 
         def get_maturity_scores_for_trend_ids(
@@ -631,7 +660,9 @@ def test_get_sow_versions_not_found(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-        def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+        def get_drivers_for_sow(
+            self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+        ) -> List[Driver]:
             return []
 
         def get_topic_counts_for_drivers(

@@ -375,7 +375,9 @@ class SowService:
         order: Optional[str] = None,
     ) -> List[DriverSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
-        drivers = self.repo.get_drivers_for_sow(tenant_schema, sow.sid or sow_id)
+        drivers = self.repo.get_drivers_for_sow(
+            tenant_schema, sow.sid or sow_id, name_order=order if sort == "name" else None
+        )
 
         driver_dids = [d.did for d in drivers if d.did is not None]
         topic_counts = self.repo.get_topic_counts_for_drivers(tenant_schema, driver_dids)
@@ -383,9 +385,6 @@ class SowService:
         geo_rows = self.repo.get_sow_geographies([sow.cs_sow_id] if sow.cs_sow_id else [])
         geo_map = _build_geo_map(geo_rows)
         sow_schema = _assemble_sow_schema(sow, geo_map)
-
-        if sort == "name":
-            drivers = sorted(drivers, key=lambda d: d.driver_name, reverse=(order == "desc"))
 
         return [
             DriverSchema(
@@ -527,7 +526,9 @@ class SowService:
     ) -> List[TopicSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
-        topics = self.repo.get_topics_for_sow(tenant_schema, sow_sid)
+        topics = self.repo.get_topics_for_sow(
+            tenant_schema, sow_sid, name_order=order if sort == "name" else None
+        )
         if not topics:
             return []
 
@@ -609,14 +610,13 @@ class SowService:
                 )
             )
 
-        if sort == "name":
-            result.sort(key=lambda t: t.topic_name, reverse=(order == "desc"))
-        elif sort == "maturity":
+        if sort == "maturity":
+            none_sentinel = float("inf") if order != "desc" else float("-inf")
             result.sort(
                 key=lambda t: (
-                    t.global_maturity_score.score
+                    float(t.global_maturity_score.score)
                     if t.global_maturity_score and t.global_maturity_score.score is not None
-                    else 0.0
+                    else none_sentinel
                 ),
                 reverse=(order == "desc"),
             )
@@ -633,7 +633,9 @@ class SowService:
     ) -> List[TrendSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
-        trends = self.repo.get_trends_for_sow(tenant_schema, sow_sid)
+        trends = self.repo.get_trends_for_sow(
+            tenant_schema, sow_sid, name_order=order if sort == "name" else None
+        )
         if not trends:
             return []
 
@@ -701,14 +703,13 @@ class SowService:
                 )
             )
 
-        if sort == "name":
-            result.sort(key=lambda t: t.trend_name, reverse=(order == "desc"))
-        elif sort == "maturity":
+        if sort == "maturity":
+            none_sentinel = float("inf") if order != "desc" else float("-inf")
             result.sort(
                 key=lambda t: (
-                    t.global_maturity_score.score
+                    float(t.global_maturity_score.score)
                     if t.global_maturity_score and t.global_maturity_score.score is not None
-                    else 0.0
+                    else none_sentinel
                 ),
                 reverse=(order == "desc"),
             )

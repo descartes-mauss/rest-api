@@ -89,13 +89,19 @@ class SowRepository:
     # Tenant schema — Trend / Shift queries
     # ------------------------------------------------------------------
 
-    def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+    def get_trends_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Trend]:
         """Return all non-deleted Trend rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Trend).where(
                 Trend.sid == sow_sid,
                 Trend.for_deletion == False,  # noqa: E712
             )
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Trend.trend_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Trend.trend_name).desc())
             return list(session.exec(stmt).all())
 
     def get_maturity_scores_for_trend_ids(
@@ -137,13 +143,19 @@ class SowRepository:
             )
             return list(session.exec(stmt).all())
 
-    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
+    def get_topics_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Topic]:
         """Return all non-deleted Topic rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Topic).where(
                 Topic.sid == sow_sid,
                 Topic.for_deletion == False,  # noqa: E712
             )
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Topic.topic_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Topic.topic_name).desc())
             return list(session.exec(stmt).all())
 
     def get_topics_for_trends(self, tenant_schema: str, trend_ssids: List[int]) -> List[Topic]:
@@ -161,10 +173,16 @@ class SowRepository:
     # Tenant schema — Driver queries
     # ------------------------------------------------------------------
 
-    def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+    def get_drivers_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Driver]:
         """Return all Driver rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Driver).where(Driver.sow_sid == sow_sid)
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Driver.driver_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Driver.driver_name).desc())
             return list(session.exec(stmt).all())
 
     def get_topic_counts_for_drivers(
