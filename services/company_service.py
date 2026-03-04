@@ -1,6 +1,5 @@
 """Service layer for the company endpoint."""
 
-import logging
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -15,8 +14,6 @@ from database.schemas.company import (
 from database.tenant_models.models import Brand, BusinessCategory, ProductLine
 from repositories.company_repository import CompanyRepository
 from services.brand_service import _assemble_brand_schema
-
-logger = logging.getLogger("uvicorn.error")
 
 
 def _build_brands(
