@@ -30,7 +30,6 @@ from database.tenant_models.models import (
 )
 from repositories.sow_repository import SowRepository
 
-_MISSING_TENANT = "Authorization token missing tenant schema information."
 _WEEKLY_INSIGHTS_MAX_SIZE = 8
 
 
@@ -93,10 +92,7 @@ class SowService:
     # Core SOW endpoints
     # ------------------------------------------------------------------
 
-    def get_sows(self, tenant_schema: Optional[str]) -> List[SowSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
+    def get_sows(self, tenant_schema: str) -> List[SowSchema]:
         sows = self.repo.get_latest_live_sows(tenant_schema)
         if not sows:
             return []
@@ -107,10 +103,7 @@ class SowService:
 
         return [_assemble_sow_schema(sow, geo_map) for sow in sows]
 
-    def get_sow(self, tenant_schema: Optional[str], sow_id: int) -> SowSchema:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
+    def get_sow(self, tenant_schema: str, sow_id: int) -> SowSchema:
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -131,10 +124,7 @@ class SowService:
     # SOW sub-endpoints
     # ------------------------------------------------------------------
 
-    def get_shifts(self, tenant_schema: Optional[str], sow_id: int) -> List[ShiftSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
+    def get_shifts(self, tenant_schema: str, sow_id: int) -> List[ShiftSchema]:
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -252,14 +242,11 @@ class SowService:
 
     def get_drivers(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[DriverSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -291,10 +278,7 @@ class SowService:
             for d in drivers
         ]
 
-    def get_versions(self, tenant_schema: Optional[str], sow_id: int) -> List[SowSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
+    def get_versions(self, tenant_schema: str, sow_id: int) -> List[SowSchema]:
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -309,12 +293,7 @@ class SowService:
 
         return [_assemble_sow_schema(v, geo_map) for v in versions]
 
-    def get_opportunities(
-        self, tenant_schema: Optional[str], sow_id: int
-    ) -> List[OpportunitySchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
+    def get_opportunities(self, tenant_schema: str, sow_id: int) -> List[OpportunitySchema]:
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -537,15 +516,12 @@ class SowService:
 
     def get_topics(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
         maturity_level: str = "All",
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[TopicSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -753,15 +729,12 @@ class SowService:
 
     def get_trends(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
         maturity_level: str = "All",
         sort: Optional[str] = None,
         order: Optional[str] = None,
     ) -> List[TrendSchema]:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -913,14 +886,11 @@ class SowService:
 
     def get_foresight(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
         page: int = 1,
         limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
     ) -> ForesightResponse:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
@@ -936,16 +906,13 @@ class SowService:
 
     def get_foresight_search(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
         topic_ids: Optional[List[str]] = None,
         trend_ids: Optional[List[str]] = None,
         page: int = 1,
         limit: int = _WEEKLY_INSIGHTS_MAX_SIZE,
     ) -> ForesightResponse:
-        if not tenant_schema:
-            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
-
         sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")

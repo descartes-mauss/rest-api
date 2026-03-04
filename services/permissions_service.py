@@ -1,7 +1,5 @@
 """Service layer for the permissions endpoint."""
 
-from typing import Optional
-
 from fastapi import HTTPException
 
 from database.schemas.permissions import ExperimentSchema, PermissionsResponse
@@ -16,15 +14,9 @@ class PermissionsService:
 
     def get_permissions(
         self,
-        tenant_schema: Optional[str],
+        tenant_schema: str,
         sow_id: int,
     ) -> PermissionsResponse:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-
         sow = self.permissions_repository.get_sow(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SowModel not available")

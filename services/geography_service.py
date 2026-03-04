@@ -1,6 +1,6 @@
 """Service layer for the geographies endpoint."""
 
-from typing import List, Optional
+from typing import List
 
 from fastapi import HTTPException
 
@@ -14,13 +14,7 @@ class GeographyService:
     def __init__(self, repo: GeographyRepository) -> None:
         self.repo = repo
 
-    def get_geographies(self, tenant_schema: Optional[str]) -> List[GeographySchema]:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-
+    def get_geographies(self, tenant_schema: str) -> List[GeographySchema]:
         client_id = self.repo.get_client_id(tenant_schema)
         if client_id is None:
             raise HTTPException(status_code=404, detail="Client not found")

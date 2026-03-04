@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.encoders import jsonable_encoder
@@ -11,7 +11,7 @@ from database.schemas.shift import ShiftSchema
 from database.schemas.sow import SowSchema
 from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
-from jwt_validator import validate_jwt
+from jwt_validator import get_tenant_schema
 from repositories.sow_repository import SowRepository
 from services.sow_service import SowService
 
@@ -34,11 +34,10 @@ def get_sow_service(
 
 @sow_router.get("/sows", response_model=List[SowSchema])
 def get_sows(
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all latest live SOWs for the current tenant."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_sows(tenant_schema)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -46,11 +45,10 @@ def get_sows(
 @sow_router.get("/sows/{sow_id}/opportunities", response_model=List[OpportunitySchema])
 def get_sow_opportunities(
     sow_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all opportunities (with nested topics) for the given SOW."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_opportunities(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -58,11 +56,10 @@ def get_sow_opportunities(
 @sow_router.get("/sows/{sow_id}/shifts", response_model=List[ShiftSchema])
 def get_sow_shifts(
     sow_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all shifts (with nested trends) for the given SOW."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_shifts(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -72,11 +69,10 @@ def get_sow_drivers(
     sow_id: int,
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all drivers for the given SOW, optionally sorted by name."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_drivers(tenant_schema, sow_id, sort=sort, order=order)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -87,11 +83,10 @@ def get_sow_topics(
     maturity_level: str = Query(default="All"),
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all topics for the given SOW, with optional maturity filtering and sorting."""
-    tenant_schema = authorization.get("orgId")
     effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
     result = service.get_topics(tenant_schema, sow_id, effective_maturity, sort=sort, order=order)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
@@ -103,11 +98,10 @@ def get_sow_trends(
     maturity_level: str = Query(default="All"),
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all trends for the given SOW, with optional maturity filtering and sorting."""
-    tenant_schema = authorization.get("orgId")
     effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
     result = service.get_trends(tenant_schema, sow_id, effective_maturity, sort=sort, order=order)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
@@ -116,11 +110,10 @@ def get_sow_trends(
 @sow_router.get("/sows/{sow_id}/versions", response_model=List[SowSchema])
 def get_sow_versions(
     sow_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return all live versions of the given SOW, newest first."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_versions(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -130,11 +123,10 @@ def get_sow_foresight(
     sow_id: int,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=8, le=8),
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return a paginated list of foresight insights for the given SOW."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_foresight(tenant_schema, sow_id, page=page, limit=limit)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -145,11 +137,10 @@ def search_sow_foresight(
     body: ForesightSearchRequest,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=8, le=8),
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return a filtered paginated list of foresight insights, optionally by topic/trend IDs."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_foresight_search(
         tenant_schema,
         sow_id,
@@ -164,10 +155,9 @@ def search_sow_foresight(
 @sow_router.get("/sows/{sow_id}", response_model=SowSchema)
 def get_sow(
     sow_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: SowService = Depends(get_sow_service),
 ) -> JSONResponse:
     """Return a single active SOW by ID."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_sow(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))

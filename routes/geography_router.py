@@ -1,11 +1,11 @@
-from typing import Any, Dict, List
+from typing import List
 
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.geography import GeographySchema
-from jwt_validator import validate_jwt
+from jwt_validator import get_tenant_schema
 from repositories.geography_repository import GeographyRepository
 from services.geography_service import GeographyService
 
@@ -26,10 +26,9 @@ def get_geography_service(
 
 @geography_router.get("/geographies", response_model=List[GeographySchema])
 def get_geographies(
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: GeographyService = Depends(get_geography_service),
 ) -> JSONResponse:
     """Return active geographies assigned to the current user's client."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_geographies(tenant_schema)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
