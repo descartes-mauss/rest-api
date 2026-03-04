@@ -22,3 +22,26 @@ class MaturityCategory(StrEnum):
     COMPETITORS = "competitor_landscape"
     ECOSYSTEM = "ecosystem_readiness"
     GLOBAL = "global"
+
+
+class TenantUserStatus(StrEnum):
+    """Enumeration representing the status of a tenant user."""
+
+    ACTIVE = "Active"
+    INVITED = "Invited"
+    SUSPENDED = "Suspended"
+
+
+class ConversationStatus(StrEnum):
+    """Enumeration representing the status of a conversation."""
+
+    ACTIVE = "Active"
+    DELETED = "Deleted"
+
+
+class SenderType(StrEnum):
+    """Enumeration representing the type of sender in a conversation."""
+
+    USER = "User"
+    ASSISTANT = "Assistant"
+    SYSTEM = "System"
