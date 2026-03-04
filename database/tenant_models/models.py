@@ -1,12 +1,18 @@
 from datetime import datetime
-from uuid import UUID
 from decimal import Decimal
 from typing import Any, List, Optional
+from uuid import UUID
 
 from sqlalchemy import JSON, Column, Integer
 from sqlmodel import Field, SQLModel
 
-from database.tenant_models.enums import ConversationStatus, ExperimentType, MaturityCategory, SenderType, TenantUserStatus
+from database.tenant_models.enums import (
+    ConversationStatus,
+    ExperimentType,
+    MaturityCategory,
+    SenderType,
+    TenantUserStatus,
+)
 
 
 class TenantSow(SQLModel, table=True):

@@ -75,3 +75,5 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## Coverage
 
 [See coverage](coverage.md)
+To generate coverage.md
+`python -m pytest --cov-config=.coveragerc --cov-report markdown --cov '.' tests/*.py`
