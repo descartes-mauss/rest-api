@@ -6,7 +6,7 @@ from typing import Any, List, Optional
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
-from database.tenant_models.enums import ExperimentType, MaturityCategory
+from database.tenant_models.enums import ConversationStatus, ExperimentType, MaturityCategory, SenderType, TenantUserStatus
 
 
 class TenantSow(SQLModel, table=True):
@@ -484,7 +484,7 @@ class TenantUser(SQLModel, table=True):
     id: UUID = Field(primary_key=True)
     email: Optional[str] = None
     display_name: str
-    status: str
+    status: TenantUserStatus
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -492,7 +492,7 @@ class TenantUser(SQLModel, table=True):
     locale: str
     timezone: str
     job_title: str
-    metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    extra_metadata: Optional[dict[str, Any]] = Field(default=None, sa_column=Column("metadata", JSON))
 
 class TenantUserIdentity(SQLModel, table=True):
     __tablename__ = "client_interface_tenantuseridentity"
@@ -501,7 +501,7 @@ class TenantUserIdentity(SQLModel, table=True):
     provider: str = Field(max_length=32)
     subject: str = Field(max_length=255)
     email: Optional[str] = Field(default=None, max_length=254)
-    raw_claims: dict = Field(sa_column=Column(JSON))
+    raw_claims: dict[str, Any] = Field(sa_column=Column(JSON))
     created_at: datetime
     user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
 
@@ -514,7 +514,7 @@ class TenantUserSession(SQLModel, table=True):
     ended_at: Optional[datetime] = None
     user_agent: str
     ip_hash: str
-    metadata: dict = Field(sa_column=Column(JSON))
+    extra_metadata: dict[str, Any] = Field(sa_column=Column("metadata", JSON))
     user_id: UUID = Field(foreign_key="client_interface_tenantuser.id")
 
 
@@ -528,7 +528,7 @@ class Conversation(SQLModel, table=True):
 
     id: UUID = Field(primary_key=True)
     title: str
-    status: str
+    status: ConversationStatus
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None
@@ -552,10 +552,10 @@ class Message(SQLModel, table=True):
     __tablename__ = "client_interface_conversationmessage"
 
     id: UUID = Field(primary_key=True)
-    sender: str
+    sender: SenderType
     timestamp: datetime
     sequence_number: int
-    content: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    content: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     content_text: str
     conversation_id: UUID = Field(foreign_key="client_interface_conversation.id")
     session_id: Optional[UUID] = Field(
