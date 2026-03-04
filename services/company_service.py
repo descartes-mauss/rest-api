@@ -1,7 +1,7 @@
 """Service layer for the company endpoint."""
 
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import HTTPException
 
@@ -36,13 +36,7 @@ class CompanyService:
     def __init__(self, repo: CompanyRepository) -> None:
         self.repo = repo
 
-    def get_company(self, tenant_schema: Optional[str]) -> CompanyResponse:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-
+    def get_company(self, tenant_schema: str) -> CompanyResponse:
         ci_client = self.repo.get_ci_client(tenant_schema.lower())
         if ci_client is None:
             raise HTTPException(status_code=404, detail="Client not found")

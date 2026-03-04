@@ -1,11 +1,11 @@
-from typing import Any, Dict, List
+from typing import List
 
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.brand import BrandSchema
-from jwt_validator import validate_jwt
+from jwt_validator import get_tenant_schema
 from repositories.brand_repository import BrandRepository
 from services.brand_service import BrandService
 
@@ -26,11 +26,10 @@ def get_brand_service(
 
 @brand_router.get("/brands", response_model=List[BrandSchema])
 def get_brands(
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: BrandService = Depends(get_brand_service),
 ) -> JSONResponse:
     """Return all brands for the current tenant, distinct by brand name."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_brands(tenant_schema)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
@@ -38,10 +37,9 @@ def get_brands(
 @brand_router.get("/brands/{brand_id}", response_model=BrandSchema)
 def get_brand(
     brand_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: BrandService = Depends(get_brand_service),
 ) -> JSONResponse:
     """Return a single brand by ID."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_brand(tenant_schema, brand_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
