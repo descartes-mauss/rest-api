@@ -3,7 +3,22 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+
+class UnlinkedTopicSchema(BaseModel):
+    """Minimal topic representation used inside trend schemas to avoid circular references."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    tid: Optional[int] = None
+    topic_id: str
+    topic_name: str
+    topic_description: Optional[str] = None
+    topic_status: int
+    topic_image_s3_uri: Optional[str] = None
+    for_deletion: bool = False
+    new_discovery: bool = False
 
 
 class TopicResponse(BaseModel):

@@ -7,16 +7,16 @@ from fastapi import HTTPException
 
 from database.public_models.models import Geography, PublicSow
 from database.schemas.driver import DriverSchema
-from database.schemas.opportunity import OpportunitySchema, TopicInOpportunitySchema
-from database.schemas.shift import (
+from database.schemas.maturity import (
     MaturityScoreDeltaSchema,
     MaturityScoreSchema,
     MaturityScoreSourceSchema,
-    ShiftSchema,
-    TrendInShiftSchema,
-    UnlinkedTopicSchema,
 )
+from database.schemas.opportunity import OpportunitySchema, TopicInOpportunitySchema
+from database.schemas.shift import ShiftSchema
 from database.schemas.sow import DEFAULT_GEOGRAPHY_ID, DEFAULT_GEOGRAPHY_NAME, SowSchema
+from database.schemas.topic import UnlinkedTopicSchema
+from database.schemas.trend import TrendSchema
 from database.tenant_models.models import (
     MaturityScore,
     MaturityScoreDelta,
@@ -212,7 +212,7 @@ class SowService:
                 MaturityScoreDeltaSchema.model_validate(global_delta) if global_delta else None
             )
 
-            trend_schema = TrendInShiftSchema(
+            trend_schema = TrendSchema(
                 ssid=t.ssid,
                 sow=t.sid,
                 load_date=t.load_date,
@@ -417,7 +417,7 @@ class SowService:
 
         # ---- Assemble trend schemas ----
 
-        def _build_trend(trend: Trend) -> TrendInShiftSchema:
+        def _build_trend(trend: Trend) -> TrendSchema:
             ssid = trend.ssid or 0
             ms_list = [
                 _maturity_score_schema(ms, trend_sources_by_score.get(ms.id or 0, []))
@@ -427,7 +427,7 @@ class SowService:
             ]
             g_ms = trend_global_by_ssid.get(ssid)
             g_delta = trend_global_delta.get(trend.trend_id)
-            return TrendInShiftSchema(
+            return TrendSchema(
                 ssid=trend.ssid,
                 sow=trend.sid,
                 load_date=trend.load_date,
@@ -463,7 +463,7 @@ class SowService:
                 ],
             )
 
-        trend_schema_by_ssid: Dict[int, TrendInShiftSchema] = {
+        trend_schema_by_ssid: Dict[int, TrendSchema] = {
             tr.ssid: _build_trend(tr) for tr in trends if tr.ssid is not None
         }
 
