@@ -5,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.driver import DriverSchema
+from database.schemas.opportunity import OpportunitySchema
 from database.schemas.shift import ShiftSchema
 from database.schemas.sow import SowSchema
 from jwt_validator import validate_jwt
@@ -34,6 +35,18 @@ def get_sows(
     """Return all latest live SOWs for the current tenant."""
     tenant_schema = authorization.get("orgId")
     result = service.get_sows(tenant_schema)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@sow_router.get("/sows/{sow_id}/opportunities", response_model=List[OpportunitySchema])
+def get_sow_opportunities(
+    sow_id: int,
+    authorization: Dict[str, Any] = Depends(validate_jwt),
+    service: SowService = Depends(get_sow_service),
+) -> JSONResponse:
+    """Return all opportunities (with nested topics) for the given SOW."""
+    tenant_schema = authorization.get("orgId")
+    result = service.get_opportunities(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
 

@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from database.public_models.models import Geography, PublicSow
 from database.schemas.driver import DriverSchema
+from database.schemas.opportunity import OpportunitySchema, TopicInOpportunitySchema
 from database.schemas.shift import (
     MaturityScoreDeltaSchema,
     MaturityScoreSchema,
@@ -303,3 +304,229 @@ class SowService:
         geo_map = _build_geo_map(rows)
 
         return [_assemble_sow_schema(v, geo_map) for v in versions]
+
+    def get_opportunities(
+        self, tenant_schema: Optional[str], sow_id: int
+    ) -> List[OpportunitySchema]:
+        if not tenant_schema:
+            raise HTTPException(status_code=400, detail=_MISSING_TENANT)
+
+        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
+        if sow is None:
+            raise HTTPException(status_code=404, detail="SOW not available")
+
+        sow_sid = sow.sid or sow_id
+        opportunities = self.repo.get_opportunities_for_sow(tenant_schema, sow_sid)
+        if not opportunities:
+            return []
+
+        opp_oids = [o.oid for o in opportunities if o.oid is not None]
+
+        # Topic M2M join rows → {oid: [tid, ...]}
+        t2o_rows = self.repo.get_topic2opportunity_rows(tenant_schema, opp_oids)
+        tids_by_opp: Dict[int, List[int]] = defaultdict(list)
+        for row in t2o_rows:
+            tids_by_opp[row.oid].append(row.tid)
+
+        all_topic_tids = list({tid for tids in tids_by_opp.values() for tid in tids})
+        topics = self.repo.get_topics_by_ids(tenant_schema, all_topic_tids)
+        topics_by_tid: Dict[int, Topic] = {t.tid: t for t in topics if t.tid is not None}
+        topic_id_strings = [t.topic_id for t in topics]
+
+        # Batch-fetch all topic-level related data
+        topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, all_topic_tids)
+        topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
+        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
+        topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+            tenant_schema, sow_sid, topic_id_strings
+        )
+        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, all_topic_tids)
+
+        # Trends referenced by topics
+        trend_ssids = list({t.ssid for t in topics if t.ssid is not None})
+        trends = self.repo.get_trends_by_ssids(tenant_schema, trend_ssids)
+        trend_id_strings = [tr.trend_id for tr in trends]
+
+        # Batch-fetch all trend-level related data (for the trend nested in each topic)
+        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
+        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+            tenant_schema, sow_sid, trend_id_strings
+        )
+        related_topics_for_trends = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+
+        # ---- Build lookup maps ----
+
+        topic_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+        for src in topic_sources:
+            topic_sources_by_score[src.maturity_score_id].append(src)
+
+        topic_non_global_by_tid: Dict[int, List[MaturityScore]] = defaultdict(list)
+        topic_global_by_tid: Dict[int, MaturityScore] = {}
+        for ms in topic_scores:
+            if ms.topic_id is None:
+                continue
+            if str(ms.category) == "global":
+                topic_global_by_tid.setdefault(ms.topic_id, ms)
+            else:
+                topic_non_global_by_tid[ms.topic_id].append(ms)
+
+        topic_non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+        topic_global_delta_by_id: Dict[str, MaturityScoreDelta] = {}
+        for delta in topic_deltas:
+            if delta.topic_id is None:
+                continue
+            if str(delta.category) == "global":
+                topic_global_delta_by_id.setdefault(delta.topic_id, delta)
+            else:
+                topic_non_global_deltas_by_id[delta.topic_id].append(delta)
+
+        drivers_by_topic_tid: Dict[int, List[int]] = defaultdict(list)
+        for row in t2d_rows:  # type: ignore[assignment]
+            drivers_by_topic_tid[row.tid].append(row.did)  # type: ignore[attr-defined]
+
+        trend_sources_by_score: Dict[int, List[MaturityScoreSource]] = defaultdict(list)
+        for src in trend_sources:
+            trend_sources_by_score[src.maturity_score_id].append(src)
+
+        trend_non_global_by_ssid: Dict[int, List[MaturityScore]] = defaultdict(list)
+        trend_global_by_ssid: Dict[int, MaturityScore] = {}
+        for ms in trend_scores:
+            if ms.trend_id is None:
+                continue
+            if str(ms.category) == "global":
+                trend_global_by_ssid.setdefault(ms.trend_id, ms)
+            else:
+                trend_non_global_by_ssid[ms.trend_id].append(ms)
+
+        trend_non_global_deltas: Dict[str, List[MaturityScoreDelta]] = defaultdict(list)
+        trend_global_delta: Dict[str, MaturityScoreDelta] = {}
+        for delta in trend_deltas:
+            if delta.trend_id is None:
+                continue
+            if str(delta.category) == "global":
+                trend_global_delta.setdefault(delta.trend_id, delta)
+            else:
+                trend_non_global_deltas[delta.trend_id].append(delta)
+
+        rel_topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
+        for rt in related_topics_for_trends:
+            if rt.ssid is not None:
+                rel_topics_by_trend_ssid[rt.ssid].append(rt)
+
+        # ---- Assemble trend schemas ----
+
+        def _build_trend(trend: Trend) -> TrendInShiftSchema:
+            ssid = trend.ssid or 0
+            ms_list = [
+                _maturity_score_schema(ms, trend_sources_by_score.get(ms.id or 0, []))
+                for ms in sorted(
+                    trend_non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category)
+                )
+            ]
+            g_ms = trend_global_by_ssid.get(ssid)
+            g_delta = trend_global_delta.get(trend.trend_id)
+            return TrendInShiftSchema(
+                ssid=trend.ssid,
+                sow=trend.sid,
+                load_date=trend.load_date,
+                trend_id=trend.trend_id,
+                trend_name=trend.trend_name,
+                trend_description=trend.trend_description,
+                shift_id=trend.shift_id,
+                shift_name=trend.shift_name,
+                shift_description=trend.shift_description,
+                trend_image_s3_uri=trend.trend_image_s3_uri,
+                masterfile_version=trend.masterfile_version,
+                for_deletion=trend.for_deletion,
+                new_discovery=trend.new_discovery,
+                maturity_scores=ms_list,
+                maturity_scores_deltas=[
+                    MaturityScoreDeltaSchema.model_validate(d)
+                    for d in sorted(
+                        trend_non_global_deltas.get(trend.trend_id, []),
+                        key=lambda x: str(x.category),
+                    )
+                ],
+                global_maturity_score=(
+                    _maturity_score_schema(g_ms, trend_sources_by_score.get(g_ms.id or 0, []))
+                    if g_ms
+                    else None
+                ),
+                global_maturity_score_delta=(
+                    MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
+                ),
+                related_topics=[
+                    UnlinkedTopicSchema.model_validate(rt)
+                    for rt in rel_topics_by_trend_ssid.get(ssid, [])
+                ],
+            )
+
+        trend_schema_by_ssid: Dict[int, TrendInShiftSchema] = {
+            tr.ssid: _build_trend(tr) for tr in trends if tr.ssid is not None
+        }
+
+        # ---- Assemble topic schemas ----
+
+        def _build_topic(topic: Topic) -> TopicInOpportunitySchema:
+            tid = topic.tid or 0
+            g_ms = topic_global_by_tid.get(tid)
+            g_delta = topic_global_delta_by_id.get(topic.topic_id)
+            return TopicInOpportunitySchema(
+                tid=topic.tid,
+                sow=topic.sid,
+                load_date=topic.load_date,
+                topic_id=topic.topic_id,
+                topic_name=topic.topic_name,
+                topic_status=topic.topic_status,
+                topic_description=topic.topic_description,
+                topic_image_s3_uri=topic.topic_image_s3_uri,
+                masterfile_version=topic.masterfile_version,
+                for_deletion=topic.for_deletion,
+                new_discovery=topic.new_discovery,
+                trend=trend_schema_by_ssid.get(topic.ssid or 0),
+                driver=drivers_by_topic_tid.get(tid, []),
+                maturity_scores=[
+                    _maturity_score_schema(ms, topic_sources_by_score.get(ms.id or 0, []))
+                    for ms in sorted(
+                        topic_non_global_by_tid.get(tid, []), key=lambda x: str(x.category)
+                    )
+                ],
+                maturity_scores_deltas=[
+                    MaturityScoreDeltaSchema.model_validate(d)
+                    for d in sorted(
+                        topic_non_global_deltas_by_id.get(topic.topic_id, []),
+                        key=lambda x: str(x.category),
+                    )
+                ],
+                global_maturity_score=(
+                    _maturity_score_schema(g_ms, topic_sources_by_score.get(g_ms.id or 0, []))
+                    if g_ms
+                    else None
+                ),
+                global_maturity_score_delta=(
+                    MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
+                ),
+            )
+
+        # ---- Assemble opportunity schemas ----
+        result: List[OpportunitySchema] = []
+        for opp in opportunities:
+            opp_tids = tids_by_opp.get(opp.oid or 0, [])
+            opp_topics = [topics_by_tid[tid] for tid in opp_tids if tid in topics_by_tid]
+            topic_schemas = [_build_topic(t) for t in opp_topics]
+            result.append(
+                OpportunitySchema(
+                    oid=opp.oid,
+                    sow=opp.sid,
+                    opportunity_name=opp.opportunity_name,
+                    opportunity=opp.opportunity,
+                    masterfile_version=opp.masterfile_version,
+                    for_deletion=opp.for_deletion,
+                    topics=topic_schemas,
+                    topic_ids=[t.topic_id for t in opp_topics],
+                )
+            )
+
+        return result

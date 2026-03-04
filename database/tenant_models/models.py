@@ -134,8 +134,8 @@ class Topic2Driver(SQLModel, table=True):
     __tablename__ = "client_interface_topic2drivermodel"
 
     tdid: Optional[int] = Field(default=None, primary_key=True)
-    topic_tid: int = Field(foreign_key="client_interface_topicmodel.tid")
-    driver_did: int = Field(foreign_key="client_interface_drivermodel.did")
+    tid: int = Field(foreign_key="client_interface_topicmodel.tid")
+    did: int = Field(foreign_key="client_interface_drivermodel.did")
     strength: Optional[float] = None
     polarity: Optional[float] = None
     cooccurrence: Optional[int] = None
@@ -156,8 +156,8 @@ class Topic2Opportunity(SQLModel, table=True):
     __tablename__ = "client_interface_topic2opportunitymodel"
 
     toid: Optional[int] = Field(default=None, primary_key=True)
-    topic_tid: int = Field(foreign_key="client_interface_topicmodel.tid")
-    opportunity_oid: int = Field(foreign_key="client_interface_opportunitymodel.oid")
+    tid: int = Field(foreign_key="client_interface_topicmodel.tid")
+    oid: int = Field(foreign_key="client_interface_opportunitymodel.oid")
 
 
 class Source(SQLModel, table=True):

@@ -2,7 +2,8 @@
 
 Queries span two schemas:
   - Tenant schema : TenantSow, Trend, MaturityScore, MaturityScoreSource,
-                    MaturityScoreDelta, Topic, Driver, Topic2Driver
+                    MaturityScoreDelta, Topic, Driver, Topic2Driver,
+                    Opportunity, Topic2Opportunity
   - Public schema : PublicSow + Geography (geography enrichment)
 """
 
@@ -18,9 +19,11 @@ from database.tenant_models.models import (
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
+    Opportunity,
     TenantSow,
     Topic,
     Topic2Driver,
+    Topic2Opportunity,
     Trend,
 )
 
@@ -161,14 +164,93 @@ class SowRepository:
         with self.db.tenant_session(tenant_schema) as session:
             stmt = (
                 select(
-                    Topic2Driver.driver_did,
+                    Topic2Driver.did,
                     func.count(Topic2Driver.tdid).label("count"),  # type: ignore[arg-type]
                 )
-                .where(Topic2Driver.driver_did.in_(driver_dids))  # type: ignore[attr-defined]
-                .group_by(Topic2Driver.driver_did)  # type: ignore[arg-type]
+                .where(Topic2Driver.did.in_(driver_dids))  # type: ignore[attr-defined]
+                .group_by(Topic2Driver.did)  # type: ignore[arg-type]
             )
             rows = session.exec(stmt).all()
             return {row[0]: row[1] for row in rows}
+
+    # ------------------------------------------------------------------
+    # Tenant schema — Opportunity queries
+    # ------------------------------------------------------------------
+
+    def get_opportunities_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Opportunity]:
+        """Return Opportunity rows for the given sow sid, ordered by opportunity."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = (
+                select(Opportunity)
+                .where(Opportunity.sid == sow_sid)
+                .order_by(Opportunity.opportunity)  # type: ignore[arg-type]
+            )
+            return list(session.exec(stmt).all())
+
+    def get_topic2opportunity_rows(
+        self, tenant_schema: str, opp_oids: List[int]
+    ) -> List[Topic2Opportunity]:
+        """Return Topic2Opportunity join rows for the given opportunity oids."""
+        if not opp_oids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic2Opportunity).where(
+                Topic2Opportunity.oid.in_(opp_oids)  # type: ignore[attr-defined]
+            )
+            return list(session.exec(stmt).all())
+
+    def get_topics_by_ids(self, tenant_schema: str, topic_tids: List[int]) -> List[Topic]:
+        """Return Topic rows for the given tids."""
+        if not topic_tids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic).where(Topic.tid.in_(topic_tids))  # type: ignore[union-attr]
+            return list(session.exec(stmt).all())
+
+    def get_maturity_scores_for_topic_ids(
+        self, tenant_schema: str, topic_tids: List[int]
+    ) -> List[MaturityScore]:
+        """Return all MaturityScore rows for the given topic tids."""
+        if not topic_tids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(MaturityScore).where(MaturityScore.topic_id.in_(topic_tids))  # type: ignore[union-attr]
+            return list(session.exec(stmt).all())
+
+    def get_maturity_score_deltas_for_sow_topic_ids(
+        self, tenant_schema: str, sow_sid: int, topic_id_strings: List[str]
+    ) -> List[MaturityScoreDelta]:
+        """Return MaturityScoreDelta rows for the given sow and topic_id strings (trend_id=null)."""
+        if not topic_id_strings:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(MaturityScoreDelta).where(
+                MaturityScoreDelta.sow_id == sow_sid,
+                MaturityScoreDelta.topic_id.in_(topic_id_strings),  # type: ignore[union-attr]
+                MaturityScoreDelta.trend_id == None,  # noqa: E711
+                MaturityScoreDelta.for_deletion == False,  # noqa: E712
+            )
+            return list(session.exec(stmt).all())
+
+    def get_topic_drivers_by_topic_ids(
+        self, tenant_schema: str, topic_tids: List[int]
+    ) -> List[Topic2Driver]:
+        """Return Topic2Driver rows for the given topic tids."""
+        if not topic_tids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic2Driver).where(
+                Topic2Driver.tid.in_(topic_tids)  # type: ignore[attr-defined]
+            )
+            return list(session.exec(stmt).all())
+
+    def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
+        """Return Trend rows for the given ssids."""
+        if not trend_ssids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Trend).where(Trend.ssid.in_(trend_ssids))  # type: ignore[union-attr]
+            return list(session.exec(stmt).all())
 
     # ------------------------------------------------------------------
     # Public schema queries
