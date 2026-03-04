@@ -12,10 +12,10 @@ from database.schemas.maturity import (
     MaturityScoreSchema,
     MaturityScoreSourceSchema,
 )
-from database.schemas.opportunity import OpportunitySchema, TopicInOpportunitySchema
+from database.schemas.opportunity import OpportunitySchema
 from database.schemas.shift import ShiftSchema
 from database.schemas.sow import DEFAULT_GEOGRAPHY_ID, DEFAULT_GEOGRAPHY_NAME, SowSchema
-from database.schemas.topic import UnlinkedTopicSchema
+from database.schemas.topic import TopicSchema, UnlinkedTopicSchema
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import (
     MaturityScore,
@@ -469,11 +469,11 @@ class SowService:
 
         # ---- Assemble topic schemas ----
 
-        def _build_topic(topic: Topic) -> TopicInOpportunitySchema:
+        def _build_topic(topic: Topic) -> TopicSchema:
             tid = topic.tid or 0
             g_ms = topic_global_by_tid.get(tid)
             g_delta = topic_global_delta_by_id.get(topic.topic_id)
-            return TopicInOpportunitySchema(
+            return TopicSchema(
                 tid=topic.tid,
                 sow=topic.sid,
                 load_date=topic.load_date,
@@ -538,7 +538,7 @@ class SowService:
         maturity_level: str = "All",
         sort: Optional[str] = None,
         order: Optional[str] = None,
-    ) -> List[TopicInOpportunitySchema]:
+    ) -> List[TopicSchema]:
         if not tenant_schema:
             raise HTTPException(status_code=400, detail=_MISSING_TENANT)
 
@@ -681,7 +681,7 @@ class SowService:
             )
 
         # ---- Assemble, filter, and sort topic schemas ----
-        result: List[TopicInOpportunitySchema] = []
+        result: List[TopicSchema] = []
         for topic in topics:
             tid = topic.tid or 0
             g_ms = topic_global_by_tid.get(tid)
@@ -695,7 +695,7 @@ class SowService:
 
             g_delta = topic_global_delta_by_id.get(topic.topic_id)
             result.append(
-                TopicInOpportunitySchema(
+                TopicSchema(
                     tid=topic.tid,
                     sow=topic.sid,
                     load_date=topic.load_date,

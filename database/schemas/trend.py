@@ -8,6 +8,8 @@ from database.schemas.topic import UnlinkedTopicSchema
 
 
 class TrendSchema(BaseModel):
+    """Trend with maturity scores, driver count, and related topics."""
+
     ssid: Optional[int] = None
     sow: int
     load_date: datetime
@@ -28,3 +30,9 @@ class TrendSchema(BaseModel):
     global_maturity_score_delta: Optional[MaturityScoreDeltaSchema] = None
     driver_count: Optional[int] = None
     related_topics: List[UnlinkedTopicSchema] = []
+
+
+# Resolve TopicSchema's forward reference to TrendSchema (circular dep broken via TYPE_CHECKING)
+from database.schemas.topic import TopicSchema  # noqa: E402
+
+TopicSchema.model_rebuild(_types_namespace={"TrendSchema": TrendSchema})

@@ -5,9 +5,10 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.driver import DriverSchema
-from database.schemas.opportunity import OpportunitySchema, TopicInOpportunitySchema
+from database.schemas.opportunity import OpportunitySchema
 from database.schemas.shift import ShiftSchema
 from database.schemas.sow import SowSchema
+from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
 from jwt_validator import validate_jwt
 from repositories.sow_repository import SowRepository
@@ -79,7 +80,7 @@ def get_sow_drivers(
     return JSONResponse(status_code=200, content=jsonable_encoder(result))
 
 
-@sow_router.get("/sows/{sow_id}/topics", response_model=List[TopicInOpportunitySchema])
+@sow_router.get("/sows/{sow_id}/topics", response_model=List[TopicSchema])
 def get_sow_topics(
     sow_id: int,
     maturity_level: str = Query(default="All"),
