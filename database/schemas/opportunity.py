@@ -3,19 +3,15 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from database.schemas.shift import (
-    MaturityScoreDeltaSchema,
-    MaturityScoreSchema,
-    TrendInShiftSchema,
-    UnlinkedTopicSchema,
-)
+from database.schemas.maturity import MaturityScoreDeltaSchema, MaturityScoreSchema
+from database.schemas.trend import TrendSchema
 
 
 class TopicInOpportunitySchema(BaseModel):
     """Topic as serialized inside an Opportunity.
 
     Mirrors Django's TopicSerializer (excludes metric/sizing fields).
-    The nested `trend` uses TrendInShiftSchema (which already carries
+    The nested `trend` uses TrendSchema (which already carries
     related_topics as UnlinkedTopicSchema to avoid circular references).
     """
 
@@ -31,22 +27,13 @@ class TopicInOpportunitySchema(BaseModel):
     for_deletion: bool = False
     new_discovery: bool = False
     type: str = "Topic"
-    trend: Optional[TrendInShiftSchema] = None
+    trend: Optional[TrendSchema] = None
     driver: List[int] = []
     driver_count: Optional[int] = None
     maturity_scores: List[MaturityScoreSchema] = []
     maturity_scores_deltas: List[MaturityScoreDeltaSchema] = []
     global_maturity_score: Optional[MaturityScoreSchema] = None
     global_maturity_score_delta: Optional[MaturityScoreDeltaSchema] = None
-
-
-# Re-export for convenience
-__all__ = [
-    "TopicInOpportunitySchema",
-    "OpportunitySchema",
-    "TrendInShiftSchema",
-    "UnlinkedTopicSchema",
-]
 
 
 class OpportunitySchema(BaseModel):
