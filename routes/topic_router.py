@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from database.schemas.topic import TopicItemResponse, TopicsListResponse
 from jwt_validator import get_tenant_schema
 from repositories.topic_repository import TopicRepository
-from services.topic_services import TopicService
+from services.topic_service import TopicService
 
 topic_router = APIRouter(prefix="/api/v2/topics", tags=["topics"])
 

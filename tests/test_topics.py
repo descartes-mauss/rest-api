@@ -8,7 +8,7 @@ from database.tenant_models.models import Topic
 from jwt_validator import validate_jwt
 from main import app
 from routes.topic_router import get_topic_service
-from services.topic_services import TopicService
+from services.topic_service import TopicService
 
 
 @pytest.fixture

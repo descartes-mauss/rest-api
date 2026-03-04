@@ -34,7 +34,7 @@ class GeographyRepository:
                     Geography.is_active == True,  # noqa: E712
                 )
             )
-            return [(cg, g) for cg, g in session.exec(stmt).all()]
+            return list(session.exec(stmt).all())
 
 
 __all__ = ["GeographyRepository"]
