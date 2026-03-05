@@ -7,6 +7,7 @@
 | database/public\_models/models.py        |      182 |        0 |    100.00% |           |
 | database/schemas/brand.py                |       31 |        0 |    100.00% |           |
 | database/schemas/company.py              |       39 |        0 |    100.00% |           |
+| database/schemas/conversation.py         |       23 |        0 |    100.00% |           |
 | database/schemas/driver.py               |       14 |        0 |    100.00% |           |
 | database/schemas/geography.py            |       11 |        0 |    100.00% |           |
 | database/schemas/maturity.py             |       24 |        0 |    100.00% |           |
@@ -23,10 +24,11 @@
 | database/tenant\_models/enums.py         |       25 |        0 |    100.00% |           |
 | database/tenant\_models/models.py        |      405 |        0 |    100.00% |           |
 | jwt\_validator.py                        |       14 |        6 |     57.14% |     19-25 |
-| main.py                                  |       34 |        4 |     88.24% |24-25, 30, 35 |
+| main.py                                  |       36 |        4 |     88.89% |25-26, 31, 36 |
 | repositories/\_\_init\_\_.py             |        0 |        0 |    100.00% |           |
 | repositories/brand\_repository.py        |       28 |       17 |     39.29% |18, 22-28, 32-34, 40-46, 52-58 |
 | repositories/company\_repository.py      |       45 |       29 |     35.56% |26, 34-36, 40-44, 48-55, 63-69, 75-81, 87-93, 97-103, 107-113 |
+| repositories/conversation\_repository.py |       42 |       29 |     30.95% |14, 18-22, 28-33, 39-42, 46-50, 54-58, 62-68 |
 | repositories/geography\_repository.py    |       16 |        7 |     56.25% |18, 22-24, 28-37 |
 | repositories/permissions\_repository.py  |       35 |       22 |     37.14% |20, 24-26, 30-32, 36-42, 50-64, 68-77 |
 | repositories/sow\_repository.py          |      111 |       83 |     25.23% |35, 43-50, 54-56, 62-69, 73-83, 91-96, 102-108, 114-120, 126-135, 139-146, 154-156, 162-174, 182-188, 194-200, 204-208, 214-218, 224-233, 239-245, 249-253, 263-274 |
@@ -35,6 +37,7 @@
 | routes/brand\_router.py                  |       24 |        3 |     87.50% | 16-18, 24 |
 | routes/client\_router.py                 |       15 |        4 |     73.33% |     18-21 |
 | routes/company\_router.py                |       22 |        3 |     86.36% | 19-21, 27 |
+| routes/conversation\_router.py           |       40 |        3 |     92.50% | 22-24, 30 |
 | routes/geography\_router.py              |       19 |        3 |     84.21% | 16-18, 24 |
 | routes/permissions\_router.py            |       19 |        3 |     84.21% | 16-18, 24 |
 | routes/sow\_router.py                    |       47 |        3 |     93.62% | 19-21, 27 |
@@ -43,6 +46,7 @@
 | services/\_\_init\_\_.py                 |        0 |        0 |    100.00% |           |
 | services/brand\_service.py               |       40 |        2 |     95.00% |    47, 74 |
 | services/company\_service.py             |       35 |        1 |     97.14% |        41 |
+| services/conversation\_service.py        |       55 |        2 |     96.36% |   87, 119 |
 | services/geography\_service.py           |       15 |        1 |     93.33% |        19 |
 | services/permissions\_service.py         |       18 |        1 |     94.44% |        23 |
 | services/sow\_service.py                 |      235 |       25 |     89.36% |94, 108, 115, 132, 163, 167, 173, 177, 257, 292, 299, 312, 369, 373, 379, 383, 397, 401, 406-411, 415-416 |
@@ -50,6 +54,7 @@
 | services/topic\_services.py              |       15 |        2 |     86.67% |    20, 29 |
 | tests/test\_brands.py                    |      102 |        8 |     92.16% |67, 109, 114, 119, 134, 164, 172, 177 |
 | tests/test\_companies.py                 |      129 |       13 |     89.92% |175, 178, 183, 188, 191, 194, 214, 217, 220, 225, 230, 233, 236 |
+| tests/test\_conversations.py             |      130 |        1 |     99.23% |       289 |
 | tests/test\_geographies.py               |       62 |        1 |     98.39% |        87 |
 | tests/test\_permissions.py               |       82 |        5 |     93.90% |92, 95, 98, 101, 119 |
 | tests/test\_sow\_opportunities.py        |      162 |        7 |     95.68% |164, 169, 172, 175, 196, 201, 206 |
@@ -57,4 +62,4 @@
 | tests/test\_sows.py                      |      130 |       13 |     90.00% |74, 79, 106, 111, 116, 134, 139, 162, 191, 199, 204, 220, 233 |
 | tests/test\_tenant\_users.py             |      116 |        1 |     99.14% |       253 |
 | tests/test\_topics.py                    |       52 |        0 |    100.00% |           |
-| **TOTAL**                                | **3146** |  **417** | **86.75%** |           |
+| **TOTAL**                                | **3438** |  **452** | **86.85%** |           |
