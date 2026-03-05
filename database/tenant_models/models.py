@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
-from sqlalchemy import JSON, Column, Integer
+from sqlalchemy import JSON, Column, Integer, String
 from sqlmodel import Field, SQLModel
 
 from database.tenant_models.enums import (
@@ -32,7 +32,7 @@ class Driver(SQLModel, table=True):
     __tablename__ = "client_interface_drivermodel"
 
     did: Optional[int] = Field(default=None, primary_key=True)
-    sow_sid: int = Field(foreign_key="client_interface_sowmodel.sid")
+    sid: int = Field(foreign_key="client_interface_sowmodel.sid")
     load_date: datetime
     driver_id: str
     driver_name: str
@@ -54,22 +54,6 @@ class Trend(SQLModel, table=True):
     shift_name: str
     shift_description: Optional[str] = None
     trend_image_s3_uri: Optional[str] = None
-    trend_industry_sizing: Optional[float] = None
-    trend_society_sizing: Optional[float] = None
-    trend_consumer_sizing: Optional[float] = None
-    trend_average_sizing: Optional[float] = None
-    trend_average_sizing_label: str = ""
-    trend_timeline: Optional[float] = None
-    trend_timeline_label: str = ""
-    trend_growth: Optional[float] = None
-    trend_growth_normalized: Optional[float] = None
-    trend_consensus: Optional[float] = None
-    trend_consensus_normalized: Optional[float] = None
-    trend_consensus_label: str = ""
-    trend_consensus_icon_uri: Optional[str] = None
-    trend_industry_impact: Optional[float] = None
-    trend_industry_impact_label: str = ""
-    trend_industry_impact_icon_uri: Optional[str] = None
     masterfile_version: int
     for_deletion: bool = False
     new_discovery: bool = False
@@ -101,24 +85,6 @@ class Topic(SQLModel, table=True):
     ssid: Optional[int] = Field(default=None, foreign_key="client_interface_trendmodel.ssid")
     # Many-to-many driver relation represented as JSON list of driver ids
     # driver_ids: Optional[List[int]] = Field(default=None, sa_column=Column(JSON))
-    industry_sizing: Optional[float] = None
-    society_sizing: Optional[float] = None
-    consumer_sizing: Optional[float] = None
-    average_sizing: Optional[float] = None
-    average_sizing_label: str = ""
-    timeline: Optional[float] = None
-    timeline_display: Optional[float] = None
-    timeline_label: str = ""
-    topic_growth: Optional[float] = None
-    topic_growth_normalized: Optional[float] = None
-    topic_consensus: Optional[float] = None
-    topic_consensus_normalized: Optional[float] = None
-    topic_consensus_label: str = ""
-    topic_consensus_icon_uri: Optional[str] = None
-    industry_impact: Optional[float] = None
-    industry_impact_display: Optional[float] = None
-    industry_impact_label: str = ""
-    industry_impact_icon_uri: Optional[str] = None
     action_required: str = ""
     masterfile_version: int
     for_deletion: bool = False
@@ -171,11 +137,10 @@ class Source(SQLModel, table=True):
     __tablename__ = "client_interface_sourcemodel"
 
     soid: Optional[int] = Field(default=None, primary_key=True)
-    sow_sid: int = Field(foreign_key="client_interface_sowmodel.sid")
+    sid: int = Field(foreign_key="client_interface_sowmodel.sid")
     source_url: str
     source_title: str
     internal_classification: Optional[str] = None
-    topic_ids: Optional[List[int]] = Field(default=None, sa_column=Column(JSON))
     load_date: datetime
     masterfile_version: int
     for_deletion: bool = False
@@ -185,8 +150,8 @@ class Topic2Source(SQLModel, table=True):
     __tablename__ = "client_interface_topic2sourcemodel"
 
     tsid: Optional[int] = Field(default=None, primary_key=True)
-    topic_tid: int = Field(foreign_key="client_interface_topicmodel.tid")
-    source_soid: int = Field(foreign_key="client_interface_sourcemodel.soid")
+    tid: int = Field(foreign_key="client_interface_topicmodel.tid")
+    soid: int = Field(foreign_key="client_interface_sourcemodel.soid")
 
 
 class Experiment(SQLModel, table=True):
@@ -326,7 +291,7 @@ class MaturityScore(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     topic_id: Optional[int] = Field(default=None, foreign_key="client_interface_topicmodel.tid")
     trend_id: Optional[int] = Field(default=None, foreign_key="client_interface_trendmodel.ssid")
-    category: MaturityCategory
+    category: MaturityCategory = Field(default=MaturityCategory.GLOBAL, sa_column=Column(String))
     score: Optional[Decimal] = None
     threshold: Optional[str] = None
     rationale: str = ""
@@ -350,7 +315,7 @@ class MaturityScoreDelta(SQLModel, table=True):
     sow_id: int = Field(foreign_key="client_interface_sowmodel.sid")
     topic_id: Optional[str] = None
     trend_id: Optional[str] = None
-    category: MaturityCategory
+    category: MaturityCategory = Field(default=MaturityCategory.GLOBAL, sa_column=Column(String))
     absolute_delta: Decimal
     percentage_delta: Decimal
     label: str

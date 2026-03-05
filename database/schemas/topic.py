@@ -98,3 +98,39 @@ class TopicItemResponse(BaseModel):
     """Response model for a single topic item."""
 
     topic: TopicResponse
+
+
+class TopicSourceSchema(BaseModel):
+    """A single source linked to a topic."""
+
+    id: int
+    url: str
+    title: str
+    internal_classification: Optional[str] = None
+
+
+class TopicSourcesResponse(BaseModel):
+    """Response model for topic sources endpoint."""
+
+    last_updated: Optional[str] = None
+    topic_sources: List[TopicSourceSchema] = []
+
+
+class UpdateTopicStatusRequest(BaseModel):
+    """Request body for the topic status update endpoint."""
+
+    status_id: int
+
+
+class Topic2DriverDriverSchema(BaseModel):
+    """Embedded driver info returned inside Topic2DriverSchema."""
+
+    driver_name: str
+    driver_description: Optional[str] = None
+
+
+class Topic2DriverSchema(BaseModel):
+    """Response schema for a single topic-driver relationship."""
+
+    driver: Topic2DriverDriverSchema
+    driver_influence: Optional[float] = None
