@@ -19,7 +19,7 @@ class PermissionsRepository:
     def __init__(self, db_provider: DBSessionProvider) -> None:
         self.db = db_provider
 
-    def get_sow(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
+    def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
         """Return the TenantSow with the given sid, or None."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(TenantSow).where(TenantSow.sid == sow_id)
@@ -44,24 +44,18 @@ class PermissionsRepository:
     def get_experiments(self, cs_sow_id: Optional[str]) -> List[Experiment]:
         """Return all Experiment rows associated with the given cs_sow_id.
 
-        Follows the same chain as the Django __get_experiments helper:
-        TenantSow.cs_sow_id → PublicSow.sow_id → PublicSow.id → Experiment.sow_id
+        Joins PublicSow → Experiment on PublicSow.id = Experiment.sow_id,
+        filtering by PublicSow.sow_id = cs_sow_id.
         """
         if not cs_sow_id:
             return []
         with self.db.session() as session:
-            public_sow_ids_stmt = (
-                select(PublicSow.id)
+            stmt = (
+                select(Experiment)
+                .join(PublicSow, PublicSow.id == Experiment.sow_id)  # type: ignore[arg-type]
                 .where(PublicSow.sow_id == cs_sow_id)
-                .order_by(PublicSow.id.desc())  # type: ignore[union-attr]
             )
-            public_sow_ids = list(session.exec(public_sow_ids_stmt).all())
-            if not public_sow_ids:
-                return []
-            exp_stmt = select(Experiment).where(
-                Experiment.sow_id.in_(public_sow_ids)  # type: ignore[attr-defined]
-            )
-            return list(session.exec(exp_stmt).all())
+            return list(session.exec(stmt).all())
 
     def has_opportunity_platforms(self, tenant_schema: str, sow_sid: int) -> bool:
         """Return True if any non-deleted Opportunity row exists for the given sow."""

@@ -34,7 +34,6 @@ class TenantUserRepository:
         """Insert a new tenant user and return it."""
         with self.db.tenant_session(tenant_schema) as session:
             session.add(user)
-            session.flush()
             session.refresh(user)
             return user
 
@@ -42,7 +41,6 @@ class TenantUserRepository:
         """Merge an updated tenant user and return it."""
         with self.db.tenant_session(tenant_schema) as session:
             merged = cast(TenantUser, session.merge(user))
-            session.flush()
             session.refresh(merged)
             return merged
 

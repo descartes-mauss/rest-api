@@ -84,7 +84,7 @@ class BaseFakeRepo:
     def get_by_id(self, tenant_schema: str, tid: int) -> Optional[Topic]:
         return None
 
-    def get_all_by_sow_id(self, tenant_schema: str, sow_id: int) -> List[Topic]:
+    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
         return []
 
     def get_sources_for_topic(
