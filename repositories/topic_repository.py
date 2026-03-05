@@ -15,6 +15,7 @@ from database.tenant_models.models import (
     MaturityScoreDelta,
     MaturityScoreSource,
     Source,
+    TenantSow,
     Topic,
     Topic2Driver,
     Topic2Source,
@@ -155,6 +156,12 @@ class TopicRepository:
                 MaturityScoreDelta.for_deletion == False,  # noqa: E712
             )
             return list(session.exec(stmt).all())
+
+    def get_sow_by_sid(self, tenant_schema: str, sid: int) -> Optional[TenantSow]:
+        """Return the TenantSow row for the given sid, or None."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(TenantSow).where(TenantSow.sid == sid)
+            return cast(Optional[TenantSow], session.exec(stmt).first())
 
 
 __all__ = ["TopicRepository"]
