@@ -116,7 +116,7 @@ class SowRepository:
             )
             return list(session.exec(stmt).all())
 
-    def get_maturity_score_sources(
+    def get_maturity_score_sources_for_ids(
         self, tenant_schema: str, score_ids: List[int]
     ) -> List[MaturityScoreSource]:
         """Return MaturityScoreSource rows for the given score ids."""
@@ -283,6 +283,34 @@ class SowRepository:
                 .order_by(Trend.sid.desc())  # type: ignore[attr-defined]
             )
             return cast(Optional[Trend], session.exec(stmt).first())
+
+    def get_trend_by_ssid(self, tenant_schema: str, ssid: int) -> Optional[Trend]:
+        """Return the non-deleted Trend for the given ssid, or None."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Trend).where(
+                Trend.ssid == ssid,
+                Trend.for_deletion == False,  # noqa: E712
+            )
+            return cast(Optional[Trend], session.exec(stmt).first())
+
+    def get_maturity_scores_for_trend(self, tenant_schema: str, ssid: int) -> List[MaturityScore]:
+        """Return all MaturityScore rows for the given trend ssid."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(MaturityScore).where(MaturityScore.trend_id == ssid)
+            return list(session.exec(stmt).all())
+
+    def get_maturity_score_deltas_for_trend(
+        self, tenant_schema: str, sow_sid: int, trend_id: str
+    ) -> List[MaturityScoreDelta]:
+        """Return MaturityScoreDelta rows for the given trend (topic_id=null)."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(MaturityScoreDelta).where(
+                MaturityScoreDelta.sow_id == sow_sid,
+                MaturityScoreDelta.trend_id == trend_id,
+                MaturityScoreDelta.topic_id == None,  # noqa: E711
+                MaturityScoreDelta.for_deletion == False,  # noqa: E712
+            )
+            return list(session.exec(stmt).all())
 
     def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
         """Return Trend rows for the given ssids."""
