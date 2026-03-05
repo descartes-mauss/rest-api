@@ -14,6 +14,7 @@ from routes.permissions_router import permissions_router
 from routes.sow_router import sow_router
 from routes.tenant_user_router import tenant_user_router
 from routes.topic_router import topic_router
+from routes.trend_router import trend_router
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
@@ -43,3 +44,4 @@ app.include_router(permissions_router)
 app.include_router(sow_router)
 app.include_router(tenant_user_router)
 app.include_router(topic_router)
+app.include_router(trend_router)
