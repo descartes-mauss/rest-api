@@ -7,7 +7,7 @@ Queries span two schemas:
   - Public schema : PublicSow + Geography (geography enrichment)
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import func
 from sqlmodel import select
@@ -273,6 +273,16 @@ class SowRepository:
                 Topic2Driver.tid.in_(topic_tids)  # type: ignore[attr-defined]
             )
             return list(session.exec(stmt).all())
+
+    def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+        """Return the most recent non-deleted Trend with the given trend_id string."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = (
+                select(Trend)
+                .where(Trend.trend_id == trend_id, Trend.for_deletion == False)  # noqa: E712
+                .order_by(Trend.sid.desc())  # type: ignore[attr-defined]
+            )
+            return cast(Optional[Trend], session.exec(stmt).first())
 
     def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
         """Return Trend rows for the given ssids."""
