@@ -1,8 +1,16 @@
+from typing import List
+
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from database.schemas.topic import TopicItemResponse, TopicsListResponse
+from database.schemas.topic import (
+    Topic2DriverSchema,
+    TopicItemResponse,
+    TopicsListResponse,
+    TopicSourcesResponse,
+    UpdateTopicStatusRequest,
+)
 from jwt_validator import get_tenant_schema
 from repositories.topic_repository import TopicRepository
 from services.topic_service import TopicService
@@ -47,3 +55,39 @@ def get_topic(
     if not topic:
         return JSONResponse(status_code=404, content={"error": "Topic not found"})
     return JSONResponse(status_code=200, content=jsonable_encoder({"topic": topic}))
+
+
+@topic_router.get("/{topic_id}/sources", response_model=TopicSourcesResponse)
+def get_topic_sources(
+    topic_id: str,
+    tenant_schema: str = Depends(get_tenant_schema),
+    topic_service: TopicService = Depends(get_topic_service),
+) -> JSONResponse:
+    """Return all sources for the topic identified by `topic_id`."""
+    result = topic_service.get_topic_sources(tenant_schema, topic_id)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
+
+
+@topic_router.post("/{tid}/status")
+def update_topic_status(
+    tid: int,
+    body: UpdateTopicStatusRequest,
+    tenant_schema: str = Depends(get_tenant_schema),
+    topic_service: TopicService = Depends(get_topic_service),
+) -> JSONResponse:
+    """Update the status of a topic by its primary key (`tid`)."""
+    success = topic_service.update_topic_status(tenant_schema, tid, body.status_id)
+    if not success:
+        return JSONResponse(status_code=404, content={"error": "Invalid status or topic not found"})
+    return JSONResponse(status_code=200, content={"success": True})
+
+
+@topic_router.get("/{tid}/drivers", response_model=List[Topic2DriverSchema])
+def get_topic_drivers(
+    tid: int,
+    tenant_schema: str = Depends(get_tenant_schema),
+    topic_service: TopicService = Depends(get_topic_service),
+) -> JSONResponse:
+    """Return all driver relationships for the topic identified by its primary key (`tid`)."""
+    result = topic_service.get_topic_drivers(tenant_schema, tid)
+    return JSONResponse(status_code=200, content=jsonable_encoder(result))
