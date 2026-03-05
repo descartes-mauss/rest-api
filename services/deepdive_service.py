@@ -2,8 +2,8 @@
 
 from typing import Any, List
 
-from clients.s3_rest_client import S3RestClient
 from database.schemas.deepdive import DeepdiveResponse
+from external.s3_rest_client import S3RestClient
 from repositories.topic_repository import TopicRepository
 
 _MANIFESTATIONS_LIMIT = 4

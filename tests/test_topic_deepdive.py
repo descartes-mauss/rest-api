@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from clients.s3_rest_client import S3RestClient
 from database.tenant_models.models import TenantSow, Topic
+from external.s3_rest_client import S3RestClient
 from jwt_validator import validate_jwt
 from main import app
 from routes.topic_router import get_deepdive_service

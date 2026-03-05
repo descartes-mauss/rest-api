@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from clients.s3_rest_client import S3RestClient
 from database.schemas.deepdive import DeepdiveResponse
 from database.schemas.topic import (
     Topic2DriverSchema,
@@ -14,6 +13,7 @@ from database.schemas.topic import (
     TopicSourcesResponse,
     UpdateTopicStatusRequest,
 )
+from external.s3_rest_client import S3RestClient
 from jwt_validator import get_tenant_schema
 from repositories.topic_repository import TopicRepository
 from services.deepdive_service import DeepdiveService
