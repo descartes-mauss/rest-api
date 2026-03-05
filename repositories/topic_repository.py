@@ -36,11 +36,11 @@ class TopicRepository:
             stmt = select(Topic).where(Topic.for_deletion == False)  # noqa: E712
             return list(session.exec(stmt).all())
 
-    def get_all_by_sow_id(self, tenant_schema: str, sow_id: int) -> List[Topic]:
-        """Return all non-deleted Topic rows for a given sow_id."""
+    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
+        """Return all non-deleted Topic rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Topic).where(
-                Topic.for_deletion == False, Topic.sid == sow_id  # noqa: E712
+                Topic.for_deletion == False, Topic.sid == sow_sid  # noqa: E712
             )
             return list(session.exec(stmt).all())
 
@@ -80,7 +80,6 @@ class TopicRepository:
                 return False
             topic.topic_status = status_id
             session.add(topic)
-            session.commit()
             return True
 
     def get_topic2drivers_with_driver(
