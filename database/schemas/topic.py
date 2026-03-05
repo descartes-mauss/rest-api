@@ -1,13 +1,20 @@
 """Pydantic models for topic-related API responses."""
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from database.schemas.maturity import MaturityScoreDeltaSchema, MaturityScoreSchema
+
+if TYPE_CHECKING:
+    from database.schemas.trend import TrendSchema
+
 
 class UnlinkedTopicSchema(BaseModel):
-    """Minimal topic representation used inside trend schemas to avoid circular references."""
+    """Minimal topic representation used inside TrendSchema to avoid circular references."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,8 +28,32 @@ class UnlinkedTopicSchema(BaseModel):
     new_discovery: bool = False
 
 
+class TopicSchema(BaseModel):
+    """Topic with full enrichment: maturity scores, drivers, and embedded trend."""
+
+    tid: Optional[int] = None
+    sow: int
+    load_date: datetime
+    topic_id: str
+    topic_name: str
+    topic_status: int
+    topic_description: Optional[str] = None
+    topic_image_s3_uri: Optional[str] = None
+    masterfile_version: int
+    for_deletion: bool = False
+    new_discovery: bool = False
+    type: str = "Topic"
+    trend: Optional[TrendSchema] = None
+    driver: List[int] = []
+    driver_count: Optional[int] = None
+    maturity_scores: List[MaturityScoreSchema] = []
+    maturity_scores_deltas: List[MaturityScoreDeltaSchema] = []
+    global_maturity_score: Optional[MaturityScoreSchema] = None
+    global_maturity_score_delta: Optional[MaturityScoreDeltaSchema] = None
+
+
 class TopicResponse(BaseModel):
-    """Response DTO model for a topic item."""
+    """Response DTO for the /topics endpoint (includes sizing metrics)."""
 
     tid: Optional[int]
     sid: int

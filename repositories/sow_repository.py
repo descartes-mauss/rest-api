@@ -7,7 +7,7 @@ Queries span two schemas:
   - Public schema : PublicSow + Geography (geography enrichment)
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import func
 from sqlmodel import select
@@ -16,6 +16,9 @@ from database.db_session_provider import DBSessionProvider
 from database.public_models.models import Geography, PublicSow
 from database.tenant_models.models import (
     Driver,
+    Insight,
+    InsightSource,
+    InsightSourceInsight,
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
@@ -86,13 +89,19 @@ class SowRepository:
     # Tenant schema — Trend / Shift queries
     # ------------------------------------------------------------------
 
-    def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+    def get_trends_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Trend]:
         """Return all non-deleted Trend rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Trend).where(
                 Trend.sid == sow_sid,
                 Trend.for_deletion == False,  # noqa: E712
             )
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Trend.trend_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Trend.trend_name).desc())
             return list(session.exec(stmt).all())
 
     def get_maturity_scores_for_trend_ids(
@@ -134,6 +143,21 @@ class SowRepository:
             )
             return list(session.exec(stmt).all())
 
+    def get_topics_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Topic]:
+        """Return all non-deleted Topic rows for the given sow sid."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic).where(
+                Topic.sid == sow_sid,
+                Topic.for_deletion == False,  # noqa: E712
+            )
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Topic.topic_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Topic.topic_name).desc())
+            return list(session.exec(stmt).all())
+
     def get_topics_for_trends(self, tenant_schema: str, trend_ssids: List[int]) -> List[Topic]:
         """Return all non-deleted Topic rows for the given trend ssids."""
         if not trend_ssids:
@@ -149,10 +173,16 @@ class SowRepository:
     # Tenant schema — Driver queries
     # ------------------------------------------------------------------
 
-    def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+    def get_drivers_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Driver]:
         """Return all Driver rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Driver).where(Driver.sow_sid == sow_sid)
+            if name_order == "asc":
+                stmt = stmt.order_by(func.lower(Driver.driver_name))
+            elif name_order == "desc":
+                stmt = stmt.order_by(func.lower(Driver.driver_name).desc())
             return list(session.exec(stmt).all())
 
     def get_topic_counts_for_drivers(
@@ -244,12 +274,112 @@ class SowRepository:
             )
             return list(session.exec(stmt).all())
 
+    def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+        """Return the most recent non-deleted Trend with the given trend_id string."""
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = (
+                select(Trend)
+                .where(Trend.trend_id == trend_id, Trend.for_deletion == False)  # noqa: E712
+                .order_by(Trend.sid.desc())  # type: ignore[attr-defined]
+            )
+            return cast(Optional[Trend], session.exec(stmt).first())
+
     def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
         """Return Trend rows for the given ssids."""
         if not trend_ssids:
             return []
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Trend).where(Trend.ssid.in_(trend_ssids))  # type: ignore[union-attr]
+            return list(session.exec(stmt).all())
+
+    # ------------------------------------------------------------------
+    # Tenant schema — Insight queries
+    # ------------------------------------------------------------------
+
+    def get_insights_for_cs_sow_id(
+        self, tenant_schema: str, cs_sow_id: str, offset: int, limit: int
+    ) -> Tuple[int, List[Insight]]:
+        """Return (total, page) of Insights for the given cs_sow_id, newest first."""
+        with self.db.tenant_session(tenant_schema) as session:
+            total: int = session.exec(
+                select(func.count()).select_from(Insight).where(Insight.cs_sow_id == cs_sow_id)
+            ).one()
+            stmt = (
+                select(Insight)
+                .where(Insight.cs_sow_id == cs_sow_id)
+                .order_by(Insight.created_at.desc())  # type: ignore[attr-defined]
+                .offset(offset)
+                .limit(limit)
+            )
+            return total, list(session.exec(stmt).all())
+
+    def get_insights_filtered(
+        self,
+        tenant_schema: str,
+        cs_sow_id: str,
+        entity_ids: List[str],
+        offset: int,
+        limit: int,
+    ) -> Tuple[int, List[Insight]]:
+        """Return (total, page) of Insights filtered by entity_ids, newest first."""
+        with self.db.tenant_session(tenant_schema) as session:
+            total = session.exec(
+                select(func.count())
+                .select_from(Insight)
+                .where(Insight.cs_sow_id == cs_sow_id, Insight.entity_id.in_(entity_ids))  # type: ignore[attr-defined]
+            ).one()
+            stmt = (
+                select(Insight)
+                .where(Insight.cs_sow_id == cs_sow_id, Insight.entity_id.in_(entity_ids))  # type: ignore[attr-defined]
+                .order_by(Insight.created_at.desc())  # type: ignore[attr-defined]
+                .offset(offset)
+                .limit(limit)
+            )
+            return total, list(session.exec(stmt).all())
+
+    def get_insight_sources_for_insight_ids(
+        self, tenant_schema: str, insight_ids: List[int]
+    ) -> List[Tuple[InsightSource, int]]:
+        """Return (InsightSource, insight_id) pairs for the given insight IDs via the join table."""
+        if not insight_ids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = (
+                select(InsightSource, InsightSourceInsight.insightmodel_id)
+                .join(
+                    InsightSourceInsight,
+                    InsightSourceInsight.insightsourcemodel_id == InsightSource.id,  # type: ignore[arg-type]
+                )
+                .where(InsightSourceInsight.insightmodel_id.in_(insight_ids))  # type: ignore[attr-defined]
+            )
+            return [(row[0], row[1]) for row in session.exec(stmt).all()]
+
+    def get_topics_by_topic_str_ids(
+        self, tenant_schema: str, sow_sid: int, topic_ids: List[str]
+    ) -> List[Topic]:
+        """Return non-deleted Topics for the given sow by string topic_id."""
+        if not topic_ids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Topic).where(
+                Topic.sid == sow_sid,
+                Topic.topic_id.in_(topic_ids),  # type: ignore[attr-defined]
+                Topic.for_deletion == False,  # noqa: E712
+            )
+            return list(session.exec(stmt).all())
+
+    def get_trends_by_trend_str_ids(
+        self, tenant_schema: str, sow_sid: int, trend_ids: List[str]
+    ) -> List[Trend]:
+        """Return non-deleted Trends for the given sow by string trend_id."""
+        if not trend_ids:
+            return []
+        with self.db.tenant_session(tenant_schema) as session:
+            stmt = select(Trend).where(
+                Trend.sid == sow_sid,
+                Trend.trend_id.in_(trend_ids),  # type: ignore[attr-defined]
+                Trend.for_deletion == False,  # noqa: E712
+            )
             return list(session.exec(stmt).all())
 
     # ------------------------------------------------------------------

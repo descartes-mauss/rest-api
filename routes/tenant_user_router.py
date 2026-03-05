@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -10,7 +10,7 @@ from database.schemas.tenant_user import (
     TenantUserSchema,
     TenantUserUpdateSchema,
 )
-from jwt_validator import validate_jwt
+from jwt_validator import get_tenant_schema
 from repositories.tenant_user_repository import TenantUserRepository
 from services.tenant_user_service import TenantUserService
 
@@ -32,11 +32,10 @@ def get_tenant_user_service(
 
 @tenant_user_router.get("/", response_model=List[TenantUserSchema])
 def list_tenant_users(
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: TenantUserService = Depends(get_tenant_user_service),
 ) -> JSONResponse:
     """Return all tenant users."""
-    tenant_schema = authorization.get("orgId")
     users = service.get_all_users(tenant_schema)
     return JSONResponse(status_code=200, content=jsonable_encoder(users))
 
@@ -44,11 +43,10 @@ def list_tenant_users(
 @tenant_user_router.get("/{user_id}", response_model=TenantUserSchema)
 def get_tenant_user(
     user_id: UUID,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: TenantUserService = Depends(get_tenant_user_service),
 ) -> JSONResponse:
     """Return a single tenant user by ID."""
-    tenant_schema = authorization.get("orgId")
     user = service.get_user(tenant_schema, user_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(user))
 
@@ -56,11 +54,10 @@ def get_tenant_user(
 @tenant_user_router.post("/", response_model=TenantUserSchema, status_code=201)
 def create_tenant_user(
     payload: TenantUserCreateSchema,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: TenantUserService = Depends(get_tenant_user_service),
 ) -> JSONResponse:
     """Create a new tenant user."""
-    tenant_schema = authorization.get("orgId")
     user = service.create_user(tenant_schema, payload)
     return JSONResponse(status_code=201, content=jsonable_encoder(user))
 
@@ -69,11 +66,10 @@ def create_tenant_user(
 def update_tenant_user(
     user_id: UUID,
     payload: TenantUserUpdateSchema,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: TenantUserService = Depends(get_tenant_user_service),
 ) -> JSONResponse:
     """Fully replace an existing tenant user."""
-    tenant_schema = authorization.get("orgId")
     user = service.update_user(tenant_schema, user_id, payload)
     return JSONResponse(status_code=200, content=jsonable_encoder(user))
 
@@ -81,10 +77,9 @@ def update_tenant_user(
 @tenant_user_router.delete("/{user_id}", status_code=204)
 def delete_tenant_user(
     user_id: UUID,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: TenantUserService = Depends(get_tenant_user_service),
 ) -> JSONResponse:
     """Delete a tenant user by ID."""
-    tenant_schema = authorization.get("orgId")
     service.delete_user(tenant_schema, user_id)
     return JSONResponse(status_code=204, content=None)

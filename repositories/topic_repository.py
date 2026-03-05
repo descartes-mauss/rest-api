@@ -25,34 +25,32 @@ class TopicRepository:
     def get_all(self, tenant_schema: str) -> List[Topic]:
         """Return all non-deleted Topic rows for a tenant."""
         with self.db.tenant_session(tenant_schema) as session:
-            statement = select(Topic).where(Topic.for_deletion == False)  # noqa: E712
-            return list(session.exec(statement).all())
+            stmt = select(Topic).where(Topic.for_deletion == False)  # noqa: E712
+            return list(session.exec(stmt).all())
 
     def get_all_by_sow_id(self, tenant_schema: str, sow_id: int) -> List[Topic]:
         """Return all non-deleted Topic rows for a given sow_id."""
         with self.db.tenant_session(tenant_schema) as session:
-            statement = select(Topic).where(
+            stmt = select(Topic).where(
                 Topic.for_deletion == False, Topic.sid == sow_id  # noqa: E712
             )
-            return list(session.exec(statement).all())
+            return list(session.exec(stmt).all())
 
     def get_by_id(self, tenant_schema: str, tid: int) -> Optional[Topic]:
         """Return a single Topic by its `tid` (or None)."""
-        statement = select(Topic).where(Topic.tid == tid, Topic.for_deletion == False)  # noqa: E712
+        stmt = select(Topic).where(Topic.tid == tid, Topic.for_deletion == False)  # noqa: E712
         with self.db.tenant_session(tenant_schema) as session:
-            result = session.exec(statement).first()
-            return cast(Optional[Topic], result)
+            return cast(Optional[Topic], session.exec(stmt).first())
 
     def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
         """Return a single Topic by its `topic_id` (or None)."""
-        statement = (
+        stmt = (
             select(Topic)
             .where(Topic.topic_id == topic_id, Topic.for_deletion == False)  # noqa: E712
             .order_by(Topic.sid.desc())  # type: ignore[attr-defined]
         )
         with self.db.tenant_session(tenant_schema) as session:
-            result = session.exec(statement).first()
-            return cast(Optional[Topic], result)
+            return cast(Optional[Topic], session.exec(stmt).first())
 
 
 __all__ = ["TopicRepository"]

@@ -109,7 +109,7 @@ def make_maturity_score(
         id=score_id,
         topic_id=topic_id,
         trend_id=trend_id,
-        category=category,  # type: ignore[arg-type]
+        category=category,
         score=score,
         threshold="High",
         rationale="Good",
@@ -137,7 +137,7 @@ def make_score_delta(
         sow_id=sow_sid,
         topic_id=topic_id,
         trend_id=trend_id,
-        category=category,  # type: ignore[arg-type]
+        category=category,
         absolute_delta=0.05,
         percentage_delta=5.0,
         label="Improving",
@@ -171,7 +171,9 @@ class BaseFakeRepo:
     def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
         return []
 
-    def get_trends_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Trend]:
+    def get_trends_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Trend]:
         return []
 
     def get_maturity_scores_for_trend_ids(
@@ -192,7 +194,9 @@ class BaseFakeRepo:
     def get_topics_for_trends(self, tenant_schema: str, trend_ssids: List[int]) -> List[Topic]:
         return []
 
-    def get_drivers_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Driver]:
+    def get_drivers_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Driver]:
         return []
 
     def get_topic_counts_for_drivers(

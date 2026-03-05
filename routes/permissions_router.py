@@ -1,11 +1,9 @@
-from typing import Any, Dict
-
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from database.schemas.permissions import PermissionsResponse
-from jwt_validator import validate_jwt
+from jwt_validator import get_tenant_schema
 from repositories.permissions_repository import PermissionsRepository
 from services.permissions_service import PermissionsService
 
@@ -27,10 +25,9 @@ def get_permissions_service(
 @permissions_router.get("/permissions/{sow_id}", response_model=PermissionsResponse)
 def get_permissions(
     sow_id: int,
-    authorization: Dict[str, Any] = Depends(validate_jwt),
+    tenant_schema: str = Depends(get_tenant_schema),
     service: PermissionsService = Depends(get_permissions_service),
 ) -> JSONResponse:
     """Return experiments, feature permissions, and opportunity platform flag for a SOW."""
-    tenant_schema = authorization.get("orgId")
     result = service.get_permissions(tenant_schema, sow_id)
     return JSONResponse(status_code=200, content=jsonable_encoder(result))

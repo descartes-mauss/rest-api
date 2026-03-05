@@ -1,5 +1,7 @@
+"""Service layer for the tenant users endpoint."""
+
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -15,32 +17,19 @@ class TenantUserService:
     def __init__(self, repo: TenantUserRepository) -> None:
         self.repo = repo
 
-    def _validate_tenant_schema(self, tenant_schema: Optional[str]) -> str:
-        if not tenant_schema:
-            raise HTTPException(
-                status_code=400,
-                detail="Authorization token missing tenant schema information.",
-            )
-        return tenant_schema
-
-    def get_all_users(self, tenant_schema: Optional[str]) -> List[TenantUser]:
+    def get_all_users(self, tenant_schema: str) -> List[TenantUser]:
         """Return all tenant users."""
-        schema = self._validate_tenant_schema(tenant_schema)
-        return self.repo.get_all(schema)
+        return self.repo.get_all(tenant_schema)
 
-    def get_user(self, tenant_schema: Optional[str], user_id: UUID) -> TenantUser:
+    def get_user(self, tenant_schema: str, user_id: UUID) -> TenantUser:
         """Return a single tenant user by ID."""
-        schema = self._validate_tenant_schema(tenant_schema)
-        user = self.repo.get_by_id(schema, user_id)
+        user = self.repo.get_by_id(tenant_schema, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Tenant user not found")
         return user
 
-    def create_user(
-        self, tenant_schema: Optional[str], payload: TenantUserCreateSchema
-    ) -> TenantUser:
+    def create_user(self, tenant_schema: str, payload: TenantUserCreateSchema) -> TenantUser:
         """Create a new tenant user."""
-        schema = self._validate_tenant_schema(tenant_schema)
         now = datetime.now(timezone.utc)
         user = TenantUser(
             id=uuid4(),
@@ -55,14 +44,13 @@ class TenantUserService:
             job_title=payload.job_title,
             extra_metadata=payload.extra_metadata,
         )
-        return self.repo.create(schema, user)
+        return self.repo.create(tenant_schema, user)
 
     def update_user(
-        self, tenant_schema: Optional[str], user_id: UUID, payload: TenantUserUpdateSchema
+        self, tenant_schema: str, user_id: UUID, payload: TenantUserUpdateSchema
     ) -> TenantUser:
         """Fully replace an existing tenant user (PUT semantics)."""
-        schema = self._validate_tenant_schema(tenant_schema)
-        user = self.repo.get_by_id(schema, user_id)
+        user = self.repo.get_by_id(tenant_schema, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Tenant user not found")
 
@@ -76,11 +64,10 @@ class TenantUserService:
         user.extra_metadata = payload.extra_metadata
         user.updated_at = datetime.now(timezone.utc)
 
-        return self.repo.update(schema, user)
+        return self.repo.update(tenant_schema, user)
 
-    def delete_user(self, tenant_schema: Optional[str], user_id: UUID) -> None:
+    def delete_user(self, tenant_schema: str, user_id: UUID) -> None:
         """Delete a tenant user by ID."""
-        schema = self._validate_tenant_schema(tenant_schema)
-        deleted = self.repo.delete(schema, user_id)
+        deleted = self.repo.delete(tenant_schema, user_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Tenant user not found")
