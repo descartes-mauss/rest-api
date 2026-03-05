@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from database.schemas.topic import (
     Topic2DriverSchema,
-    TopicItemResponse,
+    TopicSchema,
     TopicsListResponse,
     TopicSourcesResponse,
     UpdateTopicStatusRequest,
@@ -44,7 +44,7 @@ def list_topics(
     return JSONResponse(status_code=200, content=jsonable_encoder({"topics": topics}))
 
 
-@topic_router.get("/{topic_id}", response_model=TopicItemResponse)
+@topic_router.get("/{topic_id}", response_model=TopicSchema)
 def get_topic(
     topic_id: str,
     tenant_schema: str = Depends(get_tenant_schema),
@@ -54,7 +54,7 @@ def get_topic(
     topic = topic_service.get_topic_by_topic_id(tenant_schema, topic_id)
     if not topic:
         return JSONResponse(status_code=404, content={"error": "Topic not found"})
-    return JSONResponse(status_code=200, content=jsonable_encoder({"topic": topic}))
+    return JSONResponse(status_code=200, content=jsonable_encoder(topic))
 
 
 @topic_router.get("/{topic_id}/sources", response_model=TopicSourcesResponse)

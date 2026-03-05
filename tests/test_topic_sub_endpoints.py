@@ -58,8 +58,8 @@ def make_source(soid: int = 1) -> Source:
     )
 
 
-def make_topic2source(tsid: int = 1, topic_tid: int = 1, source_soid: int = 1) -> Topic2Source:
-    return Topic2Source(tsid=tsid, topic_tid=topic_tid, source_soid=source_soid)
+def make_topic2source(tsid: int = 1, tid: int = 1, soid: int = 1) -> Topic2Source:
+    return Topic2Source(tsid=tsid, tid=tid, soid=soid)
 
 
 def make_driver(did: int = 1) -> Driver:

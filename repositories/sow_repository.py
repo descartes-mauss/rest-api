@@ -178,7 +178,7 @@ class SowRepository:
     ) -> List[Driver]:
         """Return all Driver rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(Driver).where(Driver.sow_sid == sow_sid)
+            stmt = select(Driver).where(Driver.sid == sow_sid)
             if name_order == "asc":
                 stmt = stmt.order_by(func.lower(Driver.driver_name))
             elif name_order == "desc":

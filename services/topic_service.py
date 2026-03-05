@@ -1,15 +1,26 @@
 """Service layer for the topics endpoint."""
 
-from typing import List, Optional
+from collections import defaultdict
+from typing import Dict, List, Optional
 
 from database.schemas.topic import (
     Topic2DriverDriverSchema,
     Topic2DriverSchema,
+    TopicSchema,
     TopicSourceSchema,
     TopicSourcesResponse,
 )
 from database.tenant_models.models import Topic
 from repositories.topic_repository import TopicRepository
+from services.sow_service import (
+    _assemble_topic_schema,
+    _assemble_trend_schema,
+    _build_sources_map,
+    _split_topic_deltas,
+    _split_topic_scores,
+    _split_trend_deltas,
+    _split_trend_scores,
+)
 
 _STATUS_MAP = {
     0: "Undefined",
@@ -30,9 +41,75 @@ class TopicService:
         """List all topics for a given organization."""
         return self.topic_repository.get_all(organization_id)
 
-    def get_topic_by_topic_id(self, organization_id: str, topic_id: str) -> Optional[Topic]:
-        """Return a single topic by its string topic_id, or None."""
-        return self.topic_repository.get_by_topic_id(organization_id, topic_id)
+    def get_topic_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[TopicSchema]:
+        """Return a fully enriched TopicSchema by its string topic_id, or None."""
+        topic = self.topic_repository.get_by_topic_id(tenant_schema, topic_id)
+        if topic is None or topic.tid is None:
+            return None
+
+        tid = topic.tid
+
+        # Driver DIDs
+        t2d_rows = self.topic_repository.get_topic2drivers_with_driver(tenant_schema, tid)
+        drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
+        for t2d, _ in t2d_rows:
+            if t2d.did is not None:
+                drivers_by_tid[tid].append(t2d.did)
+
+        # Topic maturity scores + deltas
+        topic_scores = self.topic_repository.get_maturity_scores_for_topic(tenant_schema, tid)
+        score_ids = [ms.id for ms in topic_scores if ms.id is not None]
+        topic_sources = self.topic_repository.get_maturity_score_sources_for_ids(
+            tenant_schema, score_ids
+        )
+        topic_deltas = self.topic_repository.get_maturity_score_deltas_for_topic(
+            tenant_schema, topic.sid, topic.topic_id
+        )
+
+        sources_by_score = _build_sources_map(topic_sources)
+        global_by_tid, non_global_by_tid = _split_topic_scores(topic_scores)
+        global_delta_by_id, non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+
+        # Trend (UnlinkedTrendSerializer: related_topics=[])
+        from database.schemas.trend import TrendSchema
+
+        trend_schema_by_ssid: Dict[int, TrendSchema] = {}
+        if topic.ssid is not None:
+            trend = self.topic_repository.get_trend_by_ssid(tenant_schema, topic.ssid)
+            if trend is not None:
+                tr_scores = self.topic_repository.get_maturity_scores_for_trend(
+                    tenant_schema, topic.ssid
+                )
+                tr_score_ids = [ms.id for ms in tr_scores if ms.id is not None]
+                tr_sources = self.topic_repository.get_maturity_score_sources_for_ids(
+                    tenant_schema, tr_score_ids
+                )
+                tr_deltas = self.topic_repository.get_maturity_score_deltas_for_trend(
+                    tenant_schema, topic.sid, trend.trend_id
+                )
+                tr_sources_by_score = _build_sources_map(tr_sources)
+                tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(tr_scores)
+                tr_global_delta_by_id, tr_non_global_deltas_by_id = _split_trend_deltas(tr_deltas)
+                trend_schema_by_ssid[topic.ssid] = _assemble_trend_schema(
+                    trend,
+                    tr_sources_by_score,
+                    tr_global_by_ssid,
+                    tr_non_global_by_ssid,
+                    tr_global_delta_by_id,
+                    tr_non_global_deltas_by_id,
+                    rel_topics_by_ssid={},  # mirrors UnlinkedTrendSerializer
+                )
+
+        return _assemble_topic_schema(
+            topic,
+            sources_by_score,
+            global_by_tid,
+            non_global_by_tid,
+            global_delta_by_id,
+            non_global_deltas_by_id,
+            trend_schema_by_ssid,
+            drivers_by_tid,
+        )
 
     def get_topic_sources(self, tenant_schema: str, topic_id: str) -> TopicSourcesResponse:
         """Return sources for the most recent non-deleted topic matching topic_id."""
