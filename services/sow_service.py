@@ -329,7 +329,7 @@ class SowService:
 
         all_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         score_ids = [ms.id for ms in all_scores if ms.id is not None]
-        sources = self.repo.get_maturity_score_sources(tenant_schema, score_ids)
+        sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, score_ids)
         deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow.sid or sow_id, trend_id_strings
         )
@@ -435,7 +435,7 @@ class SowService:
 
         topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, all_topic_tids)
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
+        topic_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, topic_score_ids)
         topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
@@ -447,7 +447,7 @@ class SowService:
 
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+        trend_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, trend_score_ids)
         trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
@@ -538,7 +538,7 @@ class SowService:
 
         topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
+        topic_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, topic_score_ids)
         topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
@@ -549,7 +549,7 @@ class SowService:
         trend_id_strings = [tr.trend_id for tr in trends]
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+        trend_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, trend_score_ids)
         trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
@@ -645,7 +645,7 @@ class SowService:
 
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+        trend_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, trend_score_ids)
         trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
@@ -807,7 +807,9 @@ class SowService:
                     tenant_schema, topic_tids
                 )
                 topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-                t_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
+                t_sources = self.repo.get_maturity_score_sources_for_ids(
+                    tenant_schema, topic_score_ids
+                )
                 topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
                     tenant_schema, sow_sid, topic_id_strings
                 )
@@ -820,7 +822,7 @@ class SowService:
                     tenant_schema, topic_trend_ssids
                 )
                 topic_trend_score_ids = [ms.id for ms in topic_trend_scores if ms.id is not None]
-                topic_trend_sources = self.repo.get_maturity_score_sources(
+                topic_trend_sources = self.repo.get_maturity_score_sources_for_ids(
                     tenant_schema, topic_trend_score_ids
                 )
                 topic_trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
@@ -887,7 +889,9 @@ class SowService:
                     tenant_schema, trend_ssids
                 )
                 trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-                tr_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
+                tr_sources = self.repo.get_maturity_score_sources_for_ids(
+                    tenant_schema, trend_score_ids
+                )
                 trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
                     tenant_schema, sow_sid, trend_id_strings
                 )

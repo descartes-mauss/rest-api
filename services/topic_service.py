@@ -11,6 +11,7 @@ from database.schemas.topic import (
     TopicSourcesResponse,
 )
 from database.tenant_models.models import Topic
+from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
 from services.sow_service import (
     _assemble_topic_schema,
@@ -34,8 +35,9 @@ _STATUS_MAP = {
 class TopicService:
     """Service layer for Topic-related business logic."""
 
-    def __init__(self, topic_repository: TopicRepository) -> None:
+    def __init__(self, topic_repository: TopicRepository, sow_repository: SowRepository) -> None:
         self.topic_repository = topic_repository
+        self.sow_repository = sow_repository
 
     def get_all_topics(self, organization_id: str) -> List[Topic]:
         """List all topics for a given organization."""
@@ -59,7 +61,7 @@ class TopicService:
         # Topic maturity scores + deltas
         topic_scores = self.topic_repository.get_maturity_scores_for_topic(tenant_schema, tid)
         score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.topic_repository.get_maturity_score_sources_for_ids(
+        topic_sources = self.sow_repository.get_maturity_score_sources_for_ids(
             tenant_schema, score_ids
         )
         topic_deltas = self.topic_repository.get_maturity_score_deltas_for_topic(
@@ -75,16 +77,16 @@ class TopicService:
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {}
         if topic.ssid is not None:
-            trend = self.topic_repository.get_trend_by_ssid(tenant_schema, topic.ssid)
+            trend = self.sow_repository.get_trend_by_ssid(tenant_schema, topic.ssid)
             if trend is not None:
-                tr_scores = self.topic_repository.get_maturity_scores_for_trend(
+                tr_scores = self.sow_repository.get_maturity_scores_for_trend(
                     tenant_schema, topic.ssid
                 )
                 tr_score_ids = [ms.id for ms in tr_scores if ms.id is not None]
-                tr_sources = self.topic_repository.get_maturity_score_sources_for_ids(
+                tr_sources = self.sow_repository.get_maturity_score_sources_for_ids(
                     tenant_schema, tr_score_ids
                 )
-                tr_deltas = self.topic_repository.get_maturity_score_deltas_for_trend(
+                tr_deltas = self.sow_repository.get_maturity_score_deltas_for_trend(
                     tenant_schema, topic.sid, trend.trend_id
                 )
                 tr_sources_by_score = _build_sources_map(tr_sources)

@@ -102,7 +102,7 @@ def test_get_company_success(client: TestClient) -> None:
     all_category.business_category_name = "Finance"
     all_category.business_category_description = "Finance sector"
 
-    class FakeRepo:
+    class FakeCompanyRepo:
         def get_ci_client(self, org_id: str) -> Optional[CIClient]:
             return ci_client
 
@@ -112,6 +112,13 @@ def test_get_company_success(client: TestClient) -> None:
         def get_cs_client_image(self, org_id: str) -> Optional[str]:
             return "s3://bucket/image.png"
 
+        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
+            return [segment]
+
+        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
+            return [category, all_category]
+
+    class FakeBrandRepo:
         def get_brands(self, tenant_schema: str) -> List[Brand]:
             return [brand]
 
@@ -125,13 +132,7 @@ def test_get_company_success(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return [category]
 
-        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
-            return [segment]
-
-        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
-            return [category, all_category]
-
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 200
@@ -164,7 +165,7 @@ def test_get_company_success(client: TestClient) -> None:
 def test_get_company_no_profile(client: TestClient) -> None:
     ci_client = make_ci_client()
 
-    class FakeRepo:
+    class FakeCompanyRepo:
         def get_ci_client(self, org_id: str) -> Optional[CIClient]:
             return ci_client
 
@@ -174,6 +175,13 @@ def test_get_company_no_profile(client: TestClient) -> None:
         def get_cs_client_image(self, org_id: str) -> Optional[str]:
             return None
 
+        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
+            return []
+
+        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
+            return []
+
+    class FakeBrandRepo:
         def get_brands(self, tenant_schema: str) -> List[Brand]:
             return []
 
@@ -187,13 +195,7 @@ def test_get_company_no_profile(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
-            return []
-
-        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
-            return []
-
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 200
@@ -206,7 +208,7 @@ def test_get_company_no_profile(client: TestClient) -> None:
 
 
 def test_get_company_client_not_found(client: TestClient) -> None:
-    class FakeRepo:
+    class FakeCompanyRepo:
         def get_ci_client(self, org_id: str) -> Optional[CIClient]:
             return None
 
@@ -216,6 +218,13 @@ def test_get_company_client_not_found(client: TestClient) -> None:
         def get_cs_client_image(self, org_id: str) -> Optional[str]:
             return None
 
+        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
+            return []
+
+        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
+            return []
+
+    class FakeBrandRepo:
         def get_brands(self, tenant_schema: str) -> List[Brand]:
             return []
 
@@ -229,13 +238,7 @@ def test_get_company_client_not_found(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-        def get_customer_segments(self, tenant_schema: str) -> List[CustomerSegment]:
-            return []
-
-        def get_all_business_categories(self, tenant_schema: str) -> List[BusinessCategory]:
-            return []
-
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 404

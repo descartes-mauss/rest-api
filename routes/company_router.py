@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from database.schemas.company import CompanyResponse
 from jwt_validator import get_tenant_schema
+from repositories.brand_repository import BrandRepository
 from repositories.company_repository import CompanyRepository
 from services.company_service import CompanyService
 
@@ -20,10 +21,17 @@ def get_company_repository() -> CompanyRepository:
     return CompanyRepository(db_manager.db)
 
 
+def get_brand_repository() -> BrandRepository:
+    from database import manager as db_manager
+
+    return BrandRepository(db_manager.db)
+
+
 def get_company_service(
     repo: CompanyRepository = Depends(get_company_repository),
+    brand_repo: BrandRepository = Depends(get_brand_repository),
 ) -> CompanyService:
-    return CompanyService(repo)
+    return CompanyService(repo, brand_repo)
 
 
 @company_router.get("/companies", response_model=CompanyResponse)

@@ -84,7 +84,7 @@ class BaseFakeRepo:
     def get_by_id(self, tenant_schema: str, tid: int) -> Optional[Topic]:
         return None
 
-    def get_all_by_sow_id(self, tenant_schema: str, sow_id: int) -> List[Topic]:
+    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
         return []
 
     def get_sources_for_topic(
@@ -103,14 +103,18 @@ class BaseFakeRepo:
     def get_maturity_scores_for_topic(self, tenant_schema: str, tid: int) -> List[MaturityScore]:
         return []
 
-    def get_maturity_score_sources_for_ids(
-        self, tenant_schema: str, score_ids: List[int]
-    ) -> List[MaturityScoreSource]:
-        return []
-
     def get_maturity_score_deltas_for_topic(
         self, tenant_schema: str, sow_sid: int, topic_id: str
     ) -> List[MaturityScoreDelta]:
+        return []
+
+
+class BaseFakeSowRepo:
+    """Default no-op implementations for SowRepository methods used by TopicService."""
+
+    def get_maturity_score_sources_for_ids(
+        self, tenant_schema: str, score_ids: List[int]
+    ) -> List[MaturityScoreSource]:
         return []
 
     def get_trend_by_ssid(self, tenant_schema: str, ssid: int) -> Optional[Trend]:
@@ -137,7 +141,7 @@ def test_list_topics(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> Non
         def get_all(self, tenant_schema: str) -> List[Topic]:
             return topics
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics")
     assert resp.status_code == 200
@@ -160,7 +164,7 @@ def test_get_topic_found(monkeypatch: pytest.MonkeyPatch, client: TestClient) ->
         def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
             return t
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-42")
     assert resp.status_code == 200
@@ -196,7 +200,7 @@ def test_get_topic_found_with_drivers(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d, driver)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-10")
     assert resp.status_code == 200
@@ -208,7 +212,7 @@ def test_get_topic_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/does-not-exist")
     assert resp.status_code == 404

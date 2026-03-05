@@ -194,7 +194,7 @@ def test_get_sow_shifts_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score]
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return [source]
@@ -273,7 +273,7 @@ def test_get_sow_shifts_not_found(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []
@@ -336,7 +336,7 @@ def test_get_sow_shifts_empty_trends(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []
@@ -407,7 +407,7 @@ def _full_fake_repo_for_drivers(
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []
@@ -488,7 +488,7 @@ def test_get_sow_drivers_not_found(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []
@@ -576,7 +576,7 @@ def test_get_sow_versions_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []
@@ -642,7 +642,7 @@ def test_get_sow_versions_not_found(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return []
 
-        def get_maturity_score_sources(
+        def get_maturity_score_sources_for_ids(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return []

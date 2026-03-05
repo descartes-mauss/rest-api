@@ -13,13 +13,10 @@ from database.tenant_models.models import (
     Driver,
     MaturityScore,
     MaturityScoreDelta,
-    MaturityScoreSource,
     Source,
-    TenantSow,
     Topic,
     Topic2Driver,
     Topic2Source,
-    Trend,
 )
 
 
@@ -39,11 +36,11 @@ class TopicRepository:
             stmt = select(Topic).where(Topic.for_deletion == False)  # noqa: E712
             return list(session.exec(stmt).all())
 
-    def get_all_by_sow_id(self, tenant_schema: str, sow_id: int) -> List[Topic]:
-        """Return all non-deleted Topic rows for a given sow_id."""
+    def get_topics_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Topic]:
+        """Return all non-deleted Topic rows for the given sow sid."""
         with self.db.tenant_session(tenant_schema) as session:
             stmt = select(Topic).where(
-                Topic.for_deletion == False, Topic.sid == sow_id  # noqa: E712
+                Topic.for_deletion == False, Topic.sid == sow_sid  # noqa: E712
             )
             return list(session.exec(stmt).all())
 
@@ -83,7 +80,6 @@ class TopicRepository:
                 return False
             topic.topic_status = status_id
             session.add(topic)
-            session.commit()
             return True
 
     def get_topic2drivers_with_driver(
@@ -104,18 +100,6 @@ class TopicRepository:
             stmt = select(MaturityScore).where(MaturityScore.topic_id == tid)
             return list(session.exec(stmt).all())
 
-    def get_maturity_score_sources_for_ids(
-        self, tenant_schema: str, score_ids: List[int]
-    ) -> List[MaturityScoreSource]:
-        """Return MaturityScoreSource rows for the given score ids."""
-        if not score_ids:
-            return []
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(MaturityScoreSource).where(
-                MaturityScoreSource.maturity_score_id.in_(score_ids)  # type: ignore[attr-defined]
-            )
-            return list(session.exec(stmt).all())
-
     def get_maturity_score_deltas_for_topic(
         self, tenant_schema: str, sow_sid: int, topic_id: str
     ) -> List[MaturityScoreDelta]:
@@ -128,40 +112,6 @@ class TopicRepository:
                 MaturityScoreDelta.for_deletion == False,  # noqa: E712
             )
             return list(session.exec(stmt).all())
-
-    def get_trend_by_ssid(self, tenant_schema: str, ssid: int) -> Optional[Trend]:
-        """Return the Trend for the given ssid (or None)."""
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(Trend).where(
-                Trend.ssid == ssid,
-                Trend.for_deletion == False,  # noqa: E712
-            )
-            return cast(Optional[Trend], session.exec(stmt).first())
-
-    def get_maturity_scores_for_trend(self, tenant_schema: str, ssid: int) -> List[MaturityScore]:
-        """Return all MaturityScore rows for the given trend ssid."""
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(MaturityScore).where(MaturityScore.trend_id == ssid)
-            return list(session.exec(stmt).all())
-
-    def get_maturity_score_deltas_for_trend(
-        self, tenant_schema: str, sow_sid: int, trend_id: str
-    ) -> List[MaturityScoreDelta]:
-        """Return MaturityScoreDelta rows for the given trend (topic_id=null)."""
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(MaturityScoreDelta).where(
-                MaturityScoreDelta.sow_id == sow_sid,
-                MaturityScoreDelta.trend_id == trend_id,
-                MaturityScoreDelta.topic_id == None,  # noqa: E711
-                MaturityScoreDelta.for_deletion == False,  # noqa: E712
-            )
-            return list(session.exec(stmt).all())
-
-    def get_sow_by_sid(self, tenant_schema: str, sid: int) -> Optional[TenantSow]:
-        """Return the TenantSow row for the given sid, or None."""
-        with self.db.tenant_session(tenant_schema) as session:
-            stmt = select(TenantSow).where(TenantSow.sid == sid)
-            return cast(Optional[TenantSow], session.exec(stmt).first())
 
 
 __all__ = ["TopicRepository"]
