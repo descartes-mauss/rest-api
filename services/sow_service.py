@@ -69,12 +69,12 @@ def _build_geo_map(
 class SowService:
     """Orchestrates data fetching and assembles SOW responses."""
 
-    def __init__(self, repo: SowRepository) -> None:
-        self.repo = repo
+    def __init__(self, sow_repository: SowRepository) -> None:
+        self.sow_repository = sow_repository
 
     def _get_sow_or_404(self, tenant_schema: str, sow_id: int) -> TenantSow:
         """Return the TenantSow for sow_id, or raise HTTP 404."""
-        sow = self.repo.get_sow_by_id(tenant_schema, sow_id)
+        sow = self.sow_repository.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SOW not available")
         return sow
@@ -84,12 +84,12 @@ class SowService:
     # ------------------------------------------------------------------
 
     def get_sows(self, tenant_schema: str) -> List[SowSchema]:
-        sows = self.repo.get_latest_live_sows(tenant_schema)
+        sows = self.sow_repository.get_latest_live_sows(tenant_schema)
         if not sows:
             return []
 
         cs_sow_ids = [s.cs_sow_id for s in sows if s.cs_sow_id]
-        rows = self.repo.get_sow_geographies(cs_sow_ids) if cs_sow_ids else []
+        rows = self.sow_repository.get_sow_geographies(cs_sow_ids) if cs_sow_ids else []
         geo_map = _build_geo_map(rows)
 
         return [_sow_to_schema(sow, geo_map) for sow in sows]
@@ -100,11 +100,11 @@ class SowService:
         if not sow.cs_sow_id:
             raise HTTPException(status_code=404, detail="SOW not available")
 
-        latest = self.repo.get_latest_live_sow_for_cs_sow_id(tenant_schema, sow.cs_sow_id)
+        latest = self.sow_repository.get_latest_live_sow_for_cs_sow_id(tenant_schema, sow.cs_sow_id)
         if latest is None or latest.sid != sow_id:
             raise HTTPException(status_code=404, detail="SOW not available")
 
-        rows = self.repo.get_sow_geographies([sow.cs_sow_id])
+        rows = self.sow_repository.get_sow_geographies([sow.cs_sow_id])
         geo_map = _build_geo_map(rows)
 
         return _sow_to_schema(sow, geo_map)
@@ -115,20 +115,22 @@ class SowService:
 
     def get_shifts(self, tenant_schema: str, sow_id: int) -> List[ShiftSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
-        trends = self.repo.get_trends_for_sow(tenant_schema, sow.sid or sow_id)
+        trends = self.sow_repository.get_trends_for_sow(tenant_schema, sow.sid or sow_id)
         if not trends:
             return []
 
         trend_ssids = [t.ssid for t in trends if t.ssid is not None]
         trend_id_strings = [t.trend_id for t in trends]
 
-        all_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        all_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
+            tenant_schema, trend_ssids
+        )
         score_ids = [ms.id for ms in all_scores if ms.id is not None]
-        sources = self.repo.get_maturity_score_sources(tenant_schema, score_ids)
-        deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        sources = self.sow_repository.get_maturity_score_sources(tenant_schema, score_ids)
+        deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow.sid or sow_id, trend_id_strings
         )
-        related_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+        related_topics = self.sow_repository.get_topics_for_trends(tenant_schema, trend_ssids)
 
         sources_by_score = _build_sources_map(sources)
         global_by_ssid, non_global_by_ssid = _split_trend_scores(all_scores)
@@ -170,14 +172,14 @@ class SowService:
         order: Optional[str] = None,
     ) -> List[DriverSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
-        drivers = self.repo.get_drivers_for_sow(
+        drivers = self.sow_repository.get_drivers_for_sow(
             tenant_schema, sow.sid or sow_id, name_order=order if sort == "name" else None
         )
 
         driver_dids = [d.did for d in drivers if d.did is not None]
-        topic_counts = self.repo.get_topic_counts_for_drivers(tenant_schema, driver_dids)
+        topic_counts = self.sow_repository.get_topic_counts_for_drivers(tenant_schema, driver_dids)
 
-        geo_rows = self.repo.get_sow_geographies([sow.cs_sow_id] if sow.cs_sow_id else [])
+        geo_rows = self.sow_repository.get_sow_geographies([sow.cs_sow_id] if sow.cs_sow_id else [])
         geo_map = _build_geo_map(geo_rows)
         sow_schema = _sow_to_schema(sow, geo_map)
 
@@ -202,9 +204,9 @@ class SowService:
         if not sow.cs_sow_id:
             return []
 
-        versions = self.repo.get_sow_versions(tenant_schema, sow.cs_sow_id)
+        versions = self.sow_repository.get_sow_versions(tenant_schema, sow.cs_sow_id)
         cs_sow_ids = [v.cs_sow_id for v in versions if v.cs_sow_id]
-        rows = self.repo.get_sow_geographies(list(set(cs_sow_ids))) if cs_sow_ids else []
+        rows = self.sow_repository.get_sow_geographies(list(set(cs_sow_ids))) if cs_sow_ids else []
         geo_map = _build_geo_map(rows)
 
         return [_sow_to_schema(v, geo_map) for v in versions]
@@ -212,41 +214,51 @@ class SowService:
     def get_opportunities(self, tenant_schema: str, sow_id: int) -> List[OpportunitySchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
-        opportunities = self.repo.get_opportunities_for_sow(tenant_schema, sow_sid)
+        opportunities = self.sow_repository.get_opportunities_for_sow(tenant_schema, sow_sid)
         if not opportunities:
             return []
 
         opp_oids = [o.oid for o in opportunities if o.oid is not None]
 
-        t2o_rows = self.repo.get_topic2opportunity_rows(tenant_schema, opp_oids)
+        t2o_rows = self.sow_repository.get_topic2opportunity_rows(tenant_schema, opp_oids)
         tids_by_opp: Dict[int, List[int]] = defaultdict(list)
         for row in t2o_rows:
             tids_by_opp[row.oid].append(row.tid)
 
         all_topic_tids = list({tid for tids in tids_by_opp.values() for tid in tids})
-        topics = self.repo.get_topics_by_ids(tenant_schema, all_topic_tids)
+        topics = self.sow_repository.get_topics_by_ids(tenant_schema, all_topic_tids)
         topics_by_tid: Dict[int, Topic] = {t.tid: t for t in topics if t.tid is not None}
         topic_id_strings = [t.topic_id for t in topics]
 
-        topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, all_topic_tids)
+        topic_scores = self.sow_repository.get_maturity_scores_for_topic_ids(
+            tenant_schema, all_topic_tids
+        )
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
-        topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+        topic_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, topic_score_ids
+        )
+        topic_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
-        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, all_topic_tids)
+        t2d_rows = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, all_topic_tids)
 
         trend_ssids = list({t.ssid for t in topics if t.ssid is not None})
-        trends = self.repo.get_trends_by_ssids(tenant_schema, trend_ssids)
+        trends = self.sow_repository.get_trends_by_ssids(tenant_schema, trend_ssids)
         trend_id_strings = [tr.trend_id for tr in trends]
 
-        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
+            tenant_schema, trend_ssids
+        )
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
-        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        trend_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, trend_score_ids
+        )
+        trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
-        related_topics_for_trends = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+        related_topics_for_trends = self.sow_repository.get_topics_for_trends(
+            tenant_schema, trend_ssids
+        )
 
         topic_sources_by_score = _build_sources_map(topic_sources)
         topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
@@ -322,7 +334,7 @@ class SowService:
     ) -> List[TopicSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
-        topics = self.repo.get_topics_for_sow(
+        topics = self.sow_repository.get_topics_for_sow(
             tenant_schema, sow_sid, name_order=order if sort == "name" else None
         )
         if not topics:
@@ -331,21 +343,29 @@ class SowService:
         topic_tids = [t.tid for t in topics if t.tid is not None]
         topic_id_strings = [t.topic_id for t in topics]
 
-        topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
+        topic_scores = self.sow_repository.get_maturity_scores_for_topic_ids(
+            tenant_schema, topic_tids
+        )
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
-        topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+        topic_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, topic_score_ids
+        )
+        topic_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
-        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
+        t2d_rows = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
 
         trend_ssids = list({t.ssid for t in topics if t.ssid is not None})
-        trends = self.repo.get_trends_by_ssids(tenant_schema, trend_ssids)
+        trends = self.sow_repository.get_trends_by_ssids(tenant_schema, trend_ssids)
         trend_id_strings = [tr.trend_id for tr in trends]
-        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
+            tenant_schema, trend_ssids
+        )
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
-        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        trend_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, trend_score_ids
+        )
+        trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
 
@@ -429,7 +449,7 @@ class SowService:
     ) -> List[TrendSchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
         sow_sid = sow.sid or sow_id
-        trends = self.repo.get_trends_for_sow(
+        trends = self.sow_repository.get_trends_for_sow(
             tenant_schema, sow_sid, name_order=order if sort == "name" else None
         )
         if not trends:
@@ -438,16 +458,22 @@ class SowService:
         trend_ssids = [t.ssid for t in trends if t.ssid is not None]
         trend_id_strings = [t.trend_id for t in trends]
 
-        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
+            tenant_schema, trend_ssids
+        )
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
-        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        trend_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, trend_score_ids
+        )
+        trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
-        related_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+        related_topics = self.sow_repository.get_topics_for_trends(tenant_schema, trend_ssids)
 
         all_related_tids = [t.tid for t in related_topics if t.tid is not None]
-        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, all_related_tids)
+        t2d_rows = self.sow_repository.get_topic_drivers_by_topic_ids(
+            tenant_schema, all_related_tids
+        )
 
         sources_by_score = _build_sources_map(trend_sources)
         global_by_ssid, non_global_by_ssid = _split_trend_scores(trend_scores)
@@ -529,7 +555,7 @@ class SowService:
             return ForesightResponse(total=0, limit=limit, hasNext=False, hasPrev=False)
 
         offset = (page - 1) * limit
-        total, insights = self.repo.get_insights_for_cs_sow_id(
+        total, insights = self.sow_repository.get_insights_for_cs_sow_id(
             tenant_schema, sow.cs_sow_id, offset=offset, limit=limit
         )
         return self._assemble_foresight(tenant_schema, sow, insights, total, page, limit)
@@ -552,11 +578,11 @@ class SowService:
         entity_ids = list({*(topic_ids or []), *(trend_ids or [])})
 
         if entity_ids:
-            total, insights = self.repo.get_insights_filtered(
+            total, insights = self.sow_repository.get_insights_filtered(
                 tenant_schema, sow.cs_sow_id, entity_ids=entity_ids, offset=offset, limit=limit
             )
         else:
-            total, insights = self.repo.get_insights_for_cs_sow_id(
+            total, insights = self.sow_repository.get_insights_for_cs_sow_id(
                 tenant_schema, sow.cs_sow_id, offset=offset, limit=limit
             )
         return self._assemble_foresight(tenant_schema, sow, insights, total, page, limit)
@@ -565,31 +591,35 @@ class SowService:
         self, tenant_schema: str, sow_sid: int, entity_ids: List[str]
     ) -> Dict[str, List[TopicSchema]]:
         topic_schema_by_topic_id: Dict[str, List[TopicSchema]] = defaultdict(list)
-        pred_topics = self.repo.get_topics_by_topic_str_ids(tenant_schema, sow_sid, entity_ids)
+        pred_topics = self.sow_repository.get_topics_by_topic_str_ids(
+            tenant_schema, sow_sid, entity_ids
+        )
         if not pred_topics:
             return topic_schema_by_topic_id
 
         topic_tids = [t.tid for t in pred_topics if t.tid is not None]
         topic_id_strings = [t.topic_id for t in pred_topics]
-        topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
+        topic_scores = self.sow_repository.get_maturity_scores_for_topic_ids(
+            tenant_schema, topic_tids
+        )
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        t_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
-        topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+        t_sources = self.sow_repository.get_maturity_score_sources(tenant_schema, topic_score_ids)
+        topic_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
-        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
+        t2d_rows = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
 
         topic_trend_ssids = list({t.ssid for t in pred_topics if t.ssid is not None})
-        topic_trends = self.repo.get_trends_by_ssids(tenant_schema, topic_trend_ssids)
+        topic_trends = self.sow_repository.get_trends_by_ssids(tenant_schema, topic_trend_ssids)
         topic_trend_id_strings = [tr.trend_id for tr in topic_trends]
-        topic_trend_scores = self.repo.get_maturity_scores_for_trend_ids(
+        topic_trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
             tenant_schema, topic_trend_ssids
         )
         topic_trend_score_ids = [ms.id for ms in topic_trend_scores if ms.id is not None]
-        topic_trend_sources = self.repo.get_maturity_score_sources(
+        topic_trend_sources = self.sow_repository.get_maturity_score_sources(
             tenant_schema, topic_trend_score_ids
         )
-        topic_trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        topic_trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, topic_trend_id_strings
         )
 
@@ -643,21 +673,25 @@ class SowService:
         self, tenant_schema: str, sow_sid: int, entity_ids: List[str]
     ) -> Dict[str, List[TrendSchema]]:
         trend_schema_by_trend_id: Dict[str, List[TrendSchema]] = defaultdict(list)
-        pred_trends = self.repo.get_trends_by_trend_str_ids(tenant_schema, sow_sid, entity_ids)
+        pred_trends = self.sow_repository.get_trends_by_trend_str_ids(
+            tenant_schema, sow_sid, entity_ids
+        )
         if not pred_trends:
             return trend_schema_by_trend_id
 
         trend_ssids = [t.ssid for t in pred_trends if t.ssid is not None]
         trend_id_strings = [t.trend_id for t in pred_trends]
-        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, trend_ssids)
+        trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(
+            tenant_schema, trend_ssids
+        )
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        tr_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
-        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        tr_sources = self.sow_repository.get_maturity_score_sources(tenant_schema, trend_score_ids)
+        trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, trend_id_strings
         )
-        rel_topics = self.repo.get_topics_for_trends(tenant_schema, trend_ssids)
+        rel_topics = self.sow_repository.get_topics_for_trends(tenant_schema, trend_ssids)
         rt_tids = [rt.tid for rt in rel_topics if rt.tid is not None]
-        t2d_for_trends = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, rt_tids)
+        t2d_for_trends = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, rt_tids)
 
         tr_sources_by_score = _build_sources_map(tr_sources)
         tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(trend_scores)
@@ -720,7 +754,9 @@ class SowService:
             )
 
         insight_ids = [i.id for i in insights if i.id is not None]
-        raw_sources = self.repo.get_insight_sources_for_insight_ids(tenant_schema, insight_ids)
+        raw_sources = self.sow_repository.get_insight_sources_for_insight_ids(
+            tenant_schema, insight_ids
+        )
         sources_by_insight: Dict[int, List[InsightSource]] = defaultdict(list)
         for isrc, insight_id in raw_sources:
             sources_by_insight[insight_id].append(isrc)

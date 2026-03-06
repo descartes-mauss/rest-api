@@ -25,11 +25,11 @@ __all__ = ["TrendService"]
 class TrendService:
     """Fetches and assembles single-trend and trend-topics responses."""
 
-    def __init__(self, repo: SowRepository) -> None:
-        self.repo = repo
+    def __init__(self, sow_repository: SowRepository) -> None:
+        self.sow_repository = sow_repository
 
     def _get_trend_or_404(self, tenant_schema: str, trend_id: str) -> Trend:
-        trend = self.repo.get_trend_by_trend_id(tenant_schema, trend_id)
+        trend = self.sow_repository.get_trend_by_trend_id(tenant_schema, trend_id)
         if trend is None:
             raise HTTPException(status_code=404, detail="Trend not available")
         return trend
@@ -40,13 +40,13 @@ class TrendService:
         ssid = trend.ssid or 0
         sow_sid = trend.sid
 
-        scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
+        scores = self.sow_repository.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
         score_ids = [ms.id for ms in scores if ms.id is not None]
-        sources = self.repo.get_maturity_score_sources(tenant_schema, score_ids)
-        deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        sources = self.sow_repository.get_maturity_score_sources(tenant_schema, score_ids)
+        deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, [trend.trend_id]
         )
-        related_topics = self.repo.get_topics_for_trends(tenant_schema, [ssid])
+        related_topics = self.sow_repository.get_topics_for_trends(tenant_schema, [ssid])
 
         sources_by_score = _build_sources_map(sources)
         global_by_ssid, non_global_by_ssid = _split_trend_scores(scores)
@@ -73,26 +73,32 @@ class TrendService:
         ssid = trend.ssid or 0
         sow_sid = trend.sid
 
-        topics = self.repo.get_topics_for_trends(tenant_schema, [ssid])
+        topics = self.sow_repository.get_topics_for_trends(tenant_schema, [ssid])
         if not topics:
             return []
 
         topic_tids = [t.tid for t in topics if t.tid is not None]
         topic_id_strings = [t.topic_id for t in topics]
 
-        topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
+        topic_scores = self.sow_repository.get_maturity_scores_for_topic_ids(
+            tenant_schema, topic_tids
+        )
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
-        topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
+        topic_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, topic_score_ids
+        )
+        topic_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
-        t2d_rows = self.repo.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
+        t2d_rows = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, topic_tids)
 
         # Fetch trend maturity data so each TopicSchema can embed its parent trend
-        trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
+        trend_scores = self.sow_repository.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
-        trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
+        trend_sources = self.sow_repository.get_maturity_score_sources(
+            tenant_schema, trend_score_ids
+        )
+        trend_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, [trend.trend_id]
         )
 

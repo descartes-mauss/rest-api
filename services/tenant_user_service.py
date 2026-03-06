@@ -14,16 +14,16 @@ from repositories.tenant_user_repository import TenantUserRepository
 class TenantUserService:
     """Service layer for TenantUser business logic."""
 
-    def __init__(self, repo: TenantUserRepository) -> None:
-        self.repo = repo
+    def __init__(self, tenant_user_repository: TenantUserRepository) -> None:
+        self.tenant_user_repository = tenant_user_repository
 
     def get_all_users(self, tenant_schema: str) -> List[TenantUser]:
         """Return all tenant users."""
-        return self.repo.get_all(tenant_schema)
+        return self.tenant_user_repository.get_all(tenant_schema)
 
     def get_user(self, tenant_schema: str, user_id: UUID) -> TenantUser:
         """Return a single tenant user by ID."""
-        user = self.repo.get_by_id(tenant_schema, user_id)
+        user = self.tenant_user_repository.get_by_id(tenant_schema, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Tenant user not found")
         return user
@@ -44,13 +44,13 @@ class TenantUserService:
             job_title=payload.job_title,
             extra_metadata=payload.extra_metadata,
         )
-        return self.repo.create(tenant_schema, user)
+        return self.tenant_user_repository.create(tenant_schema, user)
 
     def update_user(
         self, tenant_schema: str, user_id: UUID, payload: TenantUserUpdateSchema
     ) -> TenantUser:
         """Fully replace an existing tenant user (PUT semantics)."""
-        user = self.repo.get_by_id(tenant_schema, user_id)
+        user = self.tenant_user_repository.get_by_id(tenant_schema, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Tenant user not found")
 
@@ -64,10 +64,10 @@ class TenantUserService:
         user.extra_metadata = payload.extra_metadata
         user.updated_at = datetime.now(timezone.utc)
 
-        return self.repo.update(tenant_schema, user)
+        return self.tenant_user_repository.update(tenant_schema, user)
 
     def delete_user(self, tenant_schema: str, user_id: UUID) -> None:
         """Delete a tenant user by ID."""
-        deleted = self.repo.delete(tenant_schema, user_id)
+        deleted = self.tenant_user_repository.delete(tenant_schema, user_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Tenant user not found")
