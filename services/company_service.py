@@ -14,10 +14,10 @@ from database.schemas.company import (
 from database.tenant_models.models import Brand, BusinessCategory, ProductLine
 from repositories.brand_repository import BrandRepository
 from repositories.company_repository import CompanyRepository
-from services.brand_service import _assemble_brand_schema
+from services.assemblers.brand_assembler import _brand_to_schema
 
 
-def _build_brands(
+def _assemble_brands(
     brands: List[Brand],
     product_lines: List[ProductLine],
     categories: List[BusinessCategory],
@@ -28,7 +28,7 @@ def _build_brands(
 
     cat_by_id: Dict[int, BusinessCategory] = {c.id: c for c in categories if c.id}
 
-    return [_assemble_brand_schema(b, cat_by_id, pl_by_brand) for b in brands]
+    return [_brand_to_schema(b, cat_by_id, pl_by_brand) for b in brands]
 
 
 class CompanyService:
@@ -71,7 +71,7 @@ class CompanyService:
         return CompanyResponse(
             company_profile_image_uri=image_uri,
             company_profile=CompanyProfileSchema.model_validate(company_profile),
-            brands=_build_brands(brands, product_lines, brand_categories),
+            brands=_assemble_brands(brands, product_lines, brand_categories),
             customer_segments=[CustomerSegmentSchema.model_validate(s) for s in customer_segments],
             business_categories=[
                 BusinessCategorySchema.model_validate(c) for c in all_business_categories

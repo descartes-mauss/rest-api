@@ -101,7 +101,7 @@ def _split_topic_deltas(
 # ------------------------------------------------------------------
 
 
-def _maturity_score_schema(
+def _maturity_score_to_schema(
     ms: MaturityScore,
     sources: List[MaturityScoreSource],
 ) -> MaturityScoreSchema:
@@ -115,7 +115,7 @@ def _maturity_score_schema(
     )
 
 
-def _assemble_trend_schema(
+def _trend_to_schema(
     trend: Trend,
     sources_by_score: Dict[int, List[MaturityScoreSource]],
     global_by_ssid: Dict[int, MaturityScore],
@@ -145,7 +145,7 @@ def _assemble_trend_schema(
         new_discovery=trend.new_discovery,
         driver_count=driver_count,
         maturity_scores=[
-            _maturity_score_schema(ms, sources_by_score.get(ms.id or 0, []))
+            _maturity_score_to_schema(ms, sources_by_score.get(ms.id or 0, []))
             for ms in sorted(non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category))
         ],
         maturity_scores_deltas=[
@@ -156,7 +156,9 @@ def _assemble_trend_schema(
             )
         ],
         global_maturity_score=(
-            _maturity_score_schema(g_ms, sources_by_score.get(g_ms.id or 0, [])) if g_ms else None
+            _maturity_score_to_schema(g_ms, sources_by_score.get(g_ms.id or 0, []))
+            if g_ms
+            else None
         ),
         global_maturity_score_delta=(
             MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
@@ -167,7 +169,7 @@ def _assemble_trend_schema(
     )
 
 
-def _assemble_topic_schema(
+def _topic_to_schema(
     topic: Topic,
     sources_by_score: Dict[int, List[MaturityScoreSource]],
     global_by_tid: Dict[int, MaturityScore],
@@ -196,7 +198,7 @@ def _assemble_topic_schema(
         trend=trend_schema_by_ssid.get(topic.ssid or 0),
         driver=drivers_by_tid.get(tid, []),
         maturity_scores=[
-            _maturity_score_schema(ms, sources_by_score.get(ms.id or 0, []))
+            _maturity_score_to_schema(ms, sources_by_score.get(ms.id or 0, []))
             for ms in sorted(non_global_by_tid.get(tid, []), key=lambda x: str(x.category))
         ],
         maturity_scores_deltas=[
@@ -207,7 +209,9 @@ def _assemble_topic_schema(
             )
         ],
         global_maturity_score=(
-            _maturity_score_schema(g_ms, sources_by_score.get(g_ms.id or 0, [])) if g_ms else None
+            _maturity_score_to_schema(g_ms, sources_by_score.get(g_ms.id or 0, []))
+            if g_ms
+            else None
         ),
         global_maturity_score_delta=(
             MaturityScoreDeltaSchema.model_validate(g_delta) if g_delta else None
