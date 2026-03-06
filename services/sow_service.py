@@ -21,12 +21,9 @@ from database.tenant_models.models import (
 )
 from repositories.sow_repository import SowRepository
 from services._maturity_helpers import (
-    _build_sources_map,
+    _build_topic_context,
+    _build_trend_context,
     _passes_maturity_filter,
-    _split_topic_deltas,
-    _split_topic_scores,
-    _split_trend_deltas,
-    _split_trend_scores,
     _topic_to_schema,
     _trend_sort_key,
     _trend_to_schema,
@@ -133,28 +130,20 @@ class SowService:
         )
         related_topics = self.sow_repository.get_topics_for_trends(tenant_schema, trend_ssids)
 
-        sources_by_score = _build_sources_map(sources)
-        global_by_ssid, non_global_by_ssid = _split_trend_scores(all_scores)
-        global_delta_by_id, non_global_deltas_by_id = _split_trend_deltas(deltas)
+        trend_ctx = _build_trend_context(all_scores, sources, deltas)
 
         rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for topic in related_topics:
             if topic.ssid is not None:
                 rel_topics_by_ssid[topic.ssid].append(topic)
 
-        sorted_trends = sorted(trends, key=lambda t: _trend_sort_key(t, global_by_ssid))
+        sorted_trends = sorted(
+            trends, key=lambda t: _trend_sort_key(t, trend_ctx.global_scores_by_id)
+        )
 
         shifts: Dict[str, ShiftSchema] = {}
         for t in sorted_trends:
-            trend_schema = _trend_to_schema(
-                t,
-                sources_by_score,
-                global_by_ssid,
-                non_global_by_ssid,
-                global_delta_by_id,
-                non_global_deltas_by_id,
-                rel_topics_by_ssid,
-            )
+            trend_schema = _trend_to_schema(t, trend_ctx, rel_topics_by_ssid)
             if t.shift_id not in shifts:
                 shifts[t.shift_id] = ShiftSchema(
                     id=t.shift_id,
@@ -261,17 +250,13 @@ class SowService:
             tenant_schema, trend_ssids
         )
 
-        topic_sources_by_score = _build_sources_map(topic_sources)
-        topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
-        topic_global_delta_by_id, topic_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+        topic_ctx = _build_topic_context(topic_scores, topic_sources, topic_deltas)
 
         drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:  # type: ignore[assignment]
             drivers_by_tid[row.tid].append(row.did)  # type: ignore[attr-defined]
 
-        trend_sources_by_score = _build_sources_map(trend_sources)
-        trend_global_by_ssid, trend_non_global_by_ssid = _split_trend_scores(trend_scores)
-        trend_global_delta_by_id, trend_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
+        trend_ctx = _build_trend_context(trend_scores, trend_sources, trend_deltas)
 
         rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for rt in related_topics_for_trends:
@@ -279,15 +264,7 @@ class SowService:
                 rel_topics_by_ssid[rt.ssid].append(rt)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _trend_to_schema(
-                tr,
-                trend_sources_by_score,
-                trend_global_by_ssid,
-                trend_non_global_by_ssid,
-                trend_global_delta_by_id,
-                trend_non_global_deltas_by_id,
-                rel_topics_by_ssid,
-            )
+            tr.ssid: _trend_to_schema(tr, trend_ctx, rel_topics_by_ssid)
             for tr in trends
             if tr.ssid is not None
         }
@@ -297,16 +274,7 @@ class SowService:
             opp_tids = tids_by_opp.get(opp.oid or 0, [])
             opp_topics = [topics_by_tid[tid] for tid in opp_tids if tid in topics_by_tid]
             topic_schemas = [
-                _topic_to_schema(
-                    t,
-                    topic_sources_by_score,
-                    topic_global_by_tid,
-                    topic_non_global_by_tid,
-                    topic_global_delta_by_id,
-                    topic_non_global_deltas_by_id,
-                    trend_schema_by_ssid,
-                    drivers_by_tid,
-                )
+                _topic_to_schema(t, topic_ctx, trend_schema_by_ssid, drivers_by_tid)
                 for t in opp_topics
             ]
             result.append(
@@ -370,17 +338,13 @@ class SowService:
             tenant_schema, sow_sid, trend_id_strings
         )
 
-        topic_sources_by_score = _build_sources_map(topic_sources)
-        topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
-        topic_global_delta_by_id, topic_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+        topic_ctx = _build_topic_context(topic_scores, topic_sources, topic_deltas)
 
         drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:
             drivers_by_tid[row.tid].append(row.did)
 
-        trend_sources_by_score = _build_sources_map(trend_sources)
-        trend_global_by_ssid, trend_non_global_by_ssid = _split_trend_scores(trend_scores)
-        trend_global_delta_by_id, trend_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
+        trend_ctx = _build_trend_context(trend_scores, trend_sources, trend_deltas)
 
         # Reuse already-loaded topics for each trend's related_topics (no extra DB call)
         topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
@@ -389,15 +353,7 @@ class SowService:
                 topics_by_trend_ssid[t.ssid].append(t)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _trend_to_schema(
-                tr,
-                trend_sources_by_score,
-                trend_global_by_ssid,
-                trend_non_global_by_ssid,
-                trend_global_delta_by_id,
-                trend_non_global_deltas_by_id,
-                topics_by_trend_ssid,
-            )
+            tr.ssid: _trend_to_schema(tr, trend_ctx, topics_by_trend_ssid)
             for tr in trends
             if tr.ssid is not None
         }
@@ -405,23 +361,12 @@ class SowService:
         result: List[TopicSchema] = []
         for topic in topics:
             tid = topic.tid or 0
-            g_ms = topic_global_by_tid.get(tid)
+            g_ms = topic_ctx.global_scores_by_id.get(tid)
 
             if not _passes_maturity_filter(topic, g_ms, maturity_level):
                 continue
 
-            result.append(
-                _topic_to_schema(
-                    topic,
-                    topic_sources_by_score,
-                    topic_global_by_tid,
-                    topic_non_global_by_tid,
-                    topic_global_delta_by_id,
-                    topic_non_global_deltas_by_id,
-                    trend_schema_by_ssid,
-                    drivers_by_tid,
-                )
-            )
+            result.append(_topic_to_schema(topic, topic_ctx, trend_schema_by_ssid, drivers_by_tid))
 
         if sort == "maturity":
             none_sentinel = float("inf") if order != "desc" else float("-inf")
@@ -472,9 +417,7 @@ class SowService:
             tenant_schema, all_related_tids
         )
 
-        sources_by_score = _build_sources_map(trend_sources)
-        global_by_ssid, non_global_by_ssid = _split_trend_scores(trend_scores)
-        global_delta_by_id, non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
+        trend_ctx = _build_trend_context(trend_scores, trend_sources, trend_deltas)
 
         rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for rt in related_topics:
@@ -493,7 +436,7 @@ class SowService:
         result: List[TrendSchema] = []
         for trend in trends:
             ssid = trend.ssid or 0
-            g_ms = global_by_ssid.get(ssid)
+            g_ms = trend_ctx.global_scores_by_id.get(ssid)
 
             if not _passes_maturity_filter(trend, g_ms, maturity_level):
                 continue
@@ -506,16 +449,7 @@ class SowService:
                 }
             )
             result.append(
-                _trend_to_schema(
-                    trend,
-                    sources_by_score,
-                    global_by_ssid,
-                    non_global_by_ssid,
-                    global_delta_by_id,
-                    non_global_deltas_by_id,
-                    rel_topics_by_ssid,
-                    driver_count=driver_count,
-                )
+                _trend_to_schema(trend, trend_ctx, rel_topics_by_ssid, driver_count=driver_count)
             )
 
         if sort == "maturity":
@@ -616,17 +550,15 @@ class SowService:
             tenant_schema, sow_sid, topic_trend_id_strings
         )
 
-        t_sources_by_score = _build_sources_map(t_sources)
-        t_global_by_tid, t_non_global_by_tid = _split_topic_scores(topic_scores)
-        t_global_delta_by_id, t_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+        topic_ctx = _build_topic_context(topic_scores, t_sources, topic_deltas)
 
         drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:
             drivers_by_tid[row.tid].append(row.did)
 
-        tt_sources_by_score = _build_sources_map(topic_trend_sources)
-        tt_global_by_ssid, tt_non_global_by_ssid = _split_trend_scores(topic_trend_scores)
-        tt_global_delta_by_id, tt_non_global_deltas_by_id = _split_trend_deltas(topic_trend_deltas)
+        trend_ctx = _build_trend_context(
+            topic_trend_scores, topic_trend_sources, topic_trend_deltas
+        )
 
         topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for t in pred_topics:
@@ -634,31 +566,14 @@ class SowService:
                 topics_by_trend_ssid[t.ssid].append(t)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _trend_to_schema(
-                tr,
-                tt_sources_by_score,
-                tt_global_by_ssid,
-                tt_non_global_by_ssid,
-                tt_global_delta_by_id,
-                tt_non_global_deltas_by_id,
-                topics_by_trend_ssid,
-            )
+            tr.ssid: _trend_to_schema(tr, trend_ctx, topics_by_trend_ssid)
             for tr in topic_trends
             if tr.ssid is not None
         }
 
         for t in pred_topics:
             topic_schema_by_topic_id[t.topic_id].append(
-                _topic_to_schema(
-                    t,
-                    t_sources_by_score,
-                    t_global_by_tid,
-                    t_non_global_by_tid,
-                    t_global_delta_by_id,
-                    t_non_global_deltas_by_id,
-                    trend_schema_by_ssid,
-                    drivers_by_tid,
-                )
+                _topic_to_schema(t, topic_ctx, trend_schema_by_ssid, drivers_by_tid)
             )
         return topic_schema_by_topic_id
 
@@ -686,9 +601,7 @@ class SowService:
         rt_tids = [rt.tid for rt in rel_topics if rt.tid is not None]
         t2d_for_trends = self.sow_repository.get_topic_drivers_by_topic_ids(tenant_schema, rt_tids)
 
-        tr_sources_by_score = _build_sources_map(tr_sources)
-        tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(trend_scores)
-        tr_global_delta_by_id, tr_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
+        trend_ctx = _build_trend_context(trend_scores, tr_sources, trend_deltas)
 
         rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for rt in rel_topics:
@@ -714,16 +627,7 @@ class SowService:
                 }
             )
             trend_schema_by_trend_id[tr.trend_id].append(
-                _trend_to_schema(
-                    tr,
-                    tr_sources_by_score,
-                    tr_global_by_ssid,
-                    tr_non_global_by_ssid,
-                    tr_global_delta_by_id,
-                    tr_non_global_deltas_by_id,
-                    rel_topics_by_ssid,
-                    driver_count=driver_count,
-                )
+                _trend_to_schema(tr, trend_ctx, rel_topics_by_ssid, driver_count=driver_count)
             )
         return trend_schema_by_trend_id
 

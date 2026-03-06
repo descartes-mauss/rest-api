@@ -15,11 +15,8 @@ from database.tenant_models.models import Topic
 from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
 from services._maturity_helpers import (
-    _build_sources_map,
-    _split_topic_deltas,
-    _split_topic_scores,
-    _split_trend_deltas,
-    _split_trend_scores,
+    _build_topic_context,
+    _build_trend_context,
     _topic_to_schema,
     _trend_to_schema,
 )
@@ -67,9 +64,7 @@ class TopicService:
             tenant_schema, topic.sid, topic.topic_id
         )
 
-        sources_by_score = _build_sources_map(topic_sources)
-        global_by_tid, non_global_by_tid = _split_topic_scores(topic_scores)
-        global_delta_by_id, non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+        topic_ctx = _build_topic_context(topic_scores, topic_sources, topic_deltas)
 
         # Trend (UnlinkedTrendSerializer: related_topics=[])
         trend_schema_by_ssid: Dict[int, TrendSchema] = {}
@@ -87,29 +82,14 @@ class TopicService:
                 tr_deltas = self.sow_repository.get_maturity_score_deltas_for_sow_trends(
                     tenant_schema, topic.sid, [trend.trend_id]
                 )
-                tr_sources_by_score = _build_sources_map(tr_sources)
-                tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(tr_scores)
-                tr_global_delta_by_id, tr_non_global_deltas_by_id = _split_trend_deltas(tr_deltas)
+                trend_ctx = _build_trend_context(tr_scores, tr_sources, tr_deltas)
                 trend_schema_by_ssid[topic.ssid] = _trend_to_schema(
                     trend,
-                    tr_sources_by_score,
-                    tr_global_by_ssid,
-                    tr_non_global_by_ssid,
-                    tr_global_delta_by_id,
-                    tr_non_global_deltas_by_id,
+                    trend_ctx,
                     rel_topics_by_ssid={},  # mirrors UnlinkedTrendSerializer
                 )
 
-        return _topic_to_schema(
-            topic,
-            sources_by_score,
-            global_by_tid,
-            non_global_by_tid,
-            global_delta_by_id,
-            non_global_deltas_by_id,
-            trend_schema_by_ssid,
-            drivers_by_tid,
-        )
+        return _topic_to_schema(topic, topic_ctx, trend_schema_by_ssid, drivers_by_tid)
 
     def get_topic_sources(self, tenant_schema: str, topic_id: str) -> TopicSourcesResponse:
         """Return sources for the most recent non-deleted topic matching topic_id."""
