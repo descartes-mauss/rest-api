@@ -289,7 +289,7 @@ def test_get_sow_topics_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [tr_score]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics")
     assert resp.status_code == 200
@@ -317,7 +317,7 @@ def test_get_sow_topics_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/topics")
     assert resp.status_code == 404
@@ -331,7 +331,7 @@ def test_get_sow_topics_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics")
     assert resp.status_code == 200
@@ -353,7 +353,7 @@ def test_get_sow_topics_filter_new(client: TestClient) -> None:
         ) -> List[Topic]:
             return [topic_new, topic_old]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?maturity_level=New")
     assert resp.status_code == 200
@@ -388,7 +388,7 @@ def test_get_sow_topics_filter_by_threshold(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score_emerging, score_mature]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?maturity_level=Emerging")
     assert resp.status_code == 200
@@ -418,7 +418,7 @@ def test_get_sow_topics_sort_name_asc(client: TestClient) -> None:
                 result.sort(key=lambda t: t.topic_name.casefold(), reverse=(name_order == "desc"))
             return result
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?sort=name&order=asc")
     assert resp.status_code == 200
@@ -472,7 +472,7 @@ def test_get_sow_trends_success(client: TestClient) -> None:
         ) -> List[Topic2Driver]:
             return [t2d]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -496,7 +496,7 @@ def test_get_sow_trends_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/trends")
     assert resp.status_code == 404
@@ -510,7 +510,7 @@ def test_get_sow_trends_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -532,7 +532,7 @@ def test_get_sow_trends_filter_new(client: TestClient) -> None:
         ) -> List[Trend]:
             return [trend_new, trend_old]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends?maturity_level=New")
     assert resp.status_code == 200
@@ -569,7 +569,7 @@ def test_get_sow_trends_driver_count(client: TestClient) -> None:
         ) -> List[Topic2Driver]:
             return [t2d_shared_1, t2d_shared_2, t2d_unique]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -598,7 +598,7 @@ def test_get_sow_trends_sort_maturity_desc(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score_low, score_high]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends?sort=maturity&order=desc")
     assert resp.status_code == 200

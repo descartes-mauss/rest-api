@@ -12,8 +12,7 @@ from database.schemas.company import (
     CustomerSegmentSchema,
 )
 from database.tenant_models.models import Brand, BusinessCategory, ProductLine
-from repositories.brand_repository import BrandRepository
-from repositories.company_repository import CompanyRepository
+from repositories.protocols import BrandRepositoryProtocol, CompanyRepositoryProtocol
 from services.assemblers.brand_assembler import _brand_to_schema
 
 
@@ -35,7 +34,9 @@ class CompanyService:
     """Orchestrates cross-schema data fetching and assembles the company response."""
 
     def __init__(
-        self, company_repository: CompanyRepository, brand_repository: BrandRepository
+        self,
+        company_repository: CompanyRepositoryProtocol,
+        brand_repository: BrandRepositoryProtocol,
     ) -> None:
         self.company_repository = company_repository
         self.brand_repository = brand_repository

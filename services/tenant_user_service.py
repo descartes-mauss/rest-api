@@ -8,13 +8,13 @@ from fastapi import HTTPException
 
 from database.schemas.tenant_user import TenantUserCreateSchema, TenantUserUpdateSchema
 from database.tenant_models.models import TenantUser
-from repositories.tenant_user_repository import TenantUserRepository
+from repositories.protocols import TenantUserRepositoryProtocol
 
 
 class TenantUserService:
     """Service layer for TenantUser business logic."""
 
-    def __init__(self, tenant_user_repository: TenantUserRepository) -> None:
+    def __init__(self, tenant_user_repository: TenantUserRepositoryProtocol) -> None:
         self.tenant_user_repository = tenant_user_repository
 
     def get_all_users(self, tenant_schema: str) -> List[TenantUser]:

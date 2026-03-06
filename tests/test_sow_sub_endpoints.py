@@ -225,7 +225,7 @@ def test_get_sow_shifts_success(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/shifts")
     assert resp.status_code == 200
@@ -304,7 +304,7 @@ def test_get_sow_shifts_not_found(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/shifts")
     assert resp.status_code == 404
@@ -367,7 +367,7 @@ def test_get_sow_shifts_empty_trends(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/shifts")
     assert resp.status_code == 200
@@ -451,7 +451,7 @@ def test_get_sow_drivers_success(client: TestClient) -> None:
     geo = make_geography()
 
     app.dependency_overrides[get_sow_service] = lambda: SowService(
-        _full_fake_repo_for_drivers(sow, [driver], {1: 3}, [(pub_sow, geo)])  # type: ignore[arg-type]
+        _full_fake_repo_for_drivers(sow, [driver], {1: 3}, [(pub_sow, geo)])
     )
 
     resp = client.get("/api/v2/sows/1/drivers")
@@ -519,7 +519,7 @@ def test_get_sow_drivers_not_found(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/drivers")
     assert resp.status_code == 404
@@ -534,7 +534,7 @@ def test_get_sow_drivers_sorted_by_name(client: TestClient) -> None:
     driver_a.driver_name = "Alpha Driver"
 
     app.dependency_overrides[get_sow_service] = lambda: SowService(
-        _full_fake_repo_for_drivers(sow, [driver_b, driver_a], {1: 0, 2: 0})  # type: ignore[arg-type]
+        _full_fake_repo_for_drivers(sow, [driver_b, driver_a], {1: 0, 2: 0})
     )
 
     resp = client.get("/api/v2/sows/1/drivers?sort=name&order=asc")
@@ -607,7 +607,7 @@ def test_get_sow_versions_success(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return [sow, older_sow]  # newest first (by -sid, returned from DB)
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/versions")
     assert resp.status_code == 200
@@ -673,7 +673,7 @@ def test_get_sow_versions_not_found(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/versions")
     assert resp.status_code == 404

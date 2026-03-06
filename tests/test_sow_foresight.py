@@ -277,7 +277,7 @@ def test_get_foresight_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/foresight")
     assert resp.status_code == 404
@@ -291,7 +291,7 @@ def test_get_foresight_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/foresight")
     assert resp.status_code == 200
@@ -344,7 +344,7 @@ def test_get_foresight_topic_insight_success(client: TestClient) -> None:
         def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
             return [trend]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/foresight")
     assert resp.status_code == 200
@@ -407,7 +407,7 @@ def test_get_foresight_trend_insight_success(client: TestClient) -> None:
         ) -> List[Topic2Driver]:
             return [t2d]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/foresight")
     assert resp.status_code == 200
@@ -436,7 +436,7 @@ def test_get_foresight_pagination_has_next(client: TestClient) -> None:
         ) -> Tuple[int, List[Insight]]:
             return 10, insights  # total=10, but page holds 8
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/foresight?page=1&limit=8")
     assert resp.status_code == 200
@@ -460,7 +460,7 @@ def test_get_foresight_pagination_has_prev(client: TestClient) -> None:
         ) -> Tuple[int, List[Insight]]:
             return 10, insights
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/foresight?page=2&limit=8")
     assert resp.status_code == 200
@@ -478,7 +478,7 @@ def test_search_foresight_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.post("/api/v2/sows/999/foresight/search", json={})
     assert resp.status_code == 404
@@ -499,7 +499,7 @@ def test_search_foresight_no_filter_returns_all(client: TestClient) -> None:
         ) -> Tuple[int, List[Insight]]:
             return 1, [insight]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.post("/api/v2/sows/1/foresight/search", json={})
     assert resp.status_code == 200
@@ -530,7 +530,7 @@ def test_search_foresight_filter_by_topic_ids(client: TestClient) -> None:
             received_entity_ids.extend(entity_ids)
             return 1, [insight]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.post(
         "/api/v2/sows/1/foresight/search", json={"topic_ids": ["topic-5", "topic-6"]}
@@ -562,7 +562,7 @@ def test_search_foresight_filter_by_both_ids(client: TestClient) -> None:
             received_entity_ids.extend(entity_ids)
             return 1, [insight]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.post(
         "/api/v2/sows/1/foresight/search",

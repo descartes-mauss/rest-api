@@ -56,7 +56,7 @@ def test_get_experiment_found(client: TestClient) -> None:
         def get_by_id(self, experiment_id: int) -> Optional[Experiment]:
             return experiment
 
-    app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())
 
     resp = client.get("/api/v2/experiments/42")
     assert resp.status_code == 200
@@ -74,7 +74,7 @@ def test_get_experiment_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_by_id returns None by default
 
-    app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())
 
     resp = client.get("/api/v2/experiments/999")
     assert resp.status_code == 404
@@ -92,7 +92,7 @@ def test_get_experiment_different_types(client: TestClient) -> None:
             def get_by_id(self, experiment_id: int) -> Optional[Experiment]:
                 return self._experiment
 
-        app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())  # type: ignore[arg-type]
+        app.dependency_overrides[get_experiment_service] = lambda: ExperimentService(FakeRepo())
 
         resp = client.get("/api/v2/experiments/1")
         assert resp.status_code == 200, f"Expected 200 for experiment_type={exp_type}"

@@ -3,13 +3,13 @@
 from typing import Optional
 
 from database.public_models.models import Experiment
-from repositories.experiment_repository import ExperimentRepository
+from repositories.protocols import ExperimentRepositoryProtocol
 
 
 class ExperimentService:
     """Service layer for Experiment-related business logic."""
 
-    def __init__(self, experiment_repository: ExperimentRepository) -> None:
+    def __init__(self, experiment_repository: ExperimentRepositoryProtocol) -> None:
         self.experiment_repository = experiment_repository
 
     def get_experiment(self, experiment_id: int) -> Optional[Experiment]:

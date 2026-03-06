@@ -59,7 +59,7 @@ def test_get_geographies_success(client: TestClient) -> None:
         def get_active_geographies(self, client_id: int) -> List[Tuple[ClientGeography, Geography]]:
             return pairs
 
-    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())
 
     resp = client.get("/api/v2/geographies")
     assert resp.status_code == 200
@@ -86,7 +86,7 @@ def test_get_geographies_client_not_found(client: TestClient) -> None:
         def get_active_geographies(self, client_id: int) -> List[Tuple[ClientGeography, Geography]]:
             return []
 
-    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())
 
     resp = client.get("/api/v2/geographies")
     assert resp.status_code == 404
@@ -101,7 +101,7 @@ def test_get_geographies_empty(client: TestClient) -> None:
         def get_active_geographies(self, client_id: int) -> List[Tuple[ClientGeography, Geography]]:
             return []
 
-    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_geography_service] = lambda: GeographyService(FakeRepo())
 
     resp = client.get("/api/v2/geographies")
     assert resp.status_code == 200

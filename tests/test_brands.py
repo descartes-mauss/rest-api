@@ -76,7 +76,7 @@ def test_get_brands_success(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return [category]
 
-    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())
 
     resp = client.get("/api/v2/brands")
     assert resp.status_code == 200
@@ -118,7 +118,7 @@ def test_get_brands_empty(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())
 
     resp = client.get("/api/v2/brands")
     assert resp.status_code == 200
@@ -146,7 +146,7 @@ def test_get_brand_found(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())
 
     resp = client.get("/api/v2/brands/7")
     assert resp.status_code == 200
@@ -176,7 +176,7 @@ def test_get_brand_not_found(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_brand_service] = lambda: BrandService(FakeRepo())
 
     resp = client.get("/api/v2/brands/999")
     assert resp.status_code == 404

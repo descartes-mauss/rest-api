@@ -4,8 +4,7 @@ from typing import Any, List
 
 from database.schemas.deepdive import DeepdiveResponse
 from external.s3_rest_client import S3RestClient
-from repositories.sow_repository import SowRepository
-from repositories.topic_repository import TopicRepository
+from repositories.protocols import SowRepositoryProtocol, TopicRepositoryProtocol
 
 _MANIFESTATIONS_LIMIT = 4
 _MARKET_INSIGHTS_LIMIT = 2
@@ -24,8 +23,8 @@ class DeepdiveService:
 
     def __init__(
         self,
-        topic_repository: TopicRepository,
-        sow_repository: SowRepository,
+        topic_repository: TopicRepositoryProtocol,
+        sow_repository: SowRepositoryProtocol,
         s3_client: S3RestClient,
     ) -> None:
         self.topic_repository = topic_repository

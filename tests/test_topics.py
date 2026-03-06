@@ -146,7 +146,9 @@ def test_list_topics(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> Non
         def get_all(self, tenant_schema: str) -> List[Topic]:
             return topics
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(
+        FakeRepo(), BaseFakeSowRepo()
+    )
 
     resp = client.get("/api/v2/topics")
     assert resp.status_code == 200
@@ -169,7 +171,9 @@ def test_get_topic_found(monkeypatch: pytest.MonkeyPatch, client: TestClient) ->
         def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
             return t
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(
+        FakeRepo(), BaseFakeSowRepo()
+    )
 
     resp = client.get("/api/v2/topics/topic-42")
     assert resp.status_code == 200
@@ -205,7 +209,9 @@ def test_get_topic_found_with_drivers(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d, driver)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(
+        FakeRepo(), BaseFakeSowRepo()
+    )
 
     resp = client.get("/api/v2/topics/topic-10")
     assert resp.status_code == 200
@@ -217,7 +223,9 @@ def test_get_topic_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(
+        FakeRepo(), BaseFakeSowRepo()
+    )
 
     resp = client.get("/api/v2/topics/does-not-exist")
     assert resp.status_code == 404

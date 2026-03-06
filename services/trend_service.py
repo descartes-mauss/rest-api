@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic, Trend
-from repositories.sow_repository import SowRepository
+from repositories.protocols import SowRepositoryProtocol
 from services.assemblers.maturity_context import _build_topic_context, _build_trend_context
 from services.assemblers.topic_assembler import _topic_to_schema
 from services.assemblers.trend_assembler import _trend_to_schema
@@ -19,7 +19,7 @@ __all__ = ["TrendService"]
 class TrendService:
     """Fetches and assembles single-trend and trend-topics responses."""
 
-    def __init__(self, sow_repository: SowRepository) -> None:
+    def __init__(self, sow_repository: SowRepositoryProtocol) -> None:
         self.sow_repository = sow_repository
 
     def _get_trend_or_404(self, tenant_schema: str, trend_id: str) -> Trend:
