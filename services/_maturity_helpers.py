@@ -1,7 +1,7 @@
 """Shared helpers for assembling maturity score and trend/topic schemas."""
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from database.schemas.maturity import (
     MaturityScoreDeltaSchema,
@@ -225,3 +225,16 @@ def _trend_sort_key(trend: Trend, global_score_by_ssid: Dict[int, MaturityScore]
     score = float(ms.score) if ms and ms.score is not None else None
     # None scores sort last: (True, ...) > (False, ...)
     return (score is None, -(score or 0.0), trend.shift_id or "", trend.trend_name or "")
+
+
+def _passes_maturity_filter(
+    entity: Union[Topic, Trend],
+    global_score: Optional[MaturityScore],
+    maturity_level: str,
+) -> bool:
+    """Return True if entity should be included for the given maturity_level filter."""
+    if maturity_level == "New":
+        return bool(entity.new_discovery)
+    if maturity_level == "All":
+        return True
+    return (global_score.threshold if global_score else None) == maturity_level

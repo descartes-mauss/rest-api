@@ -22,6 +22,7 @@ from database.tenant_models.models import (
 from repositories.sow_repository import SowRepository
 from services._maturity_helpers import (
     _build_sources_map,
+    _passes_maturity_filter,
     _split_topic_deltas,
     _split_topic_scores,
     _split_trend_deltas,
@@ -406,12 +407,8 @@ class SowService:
             tid = topic.tid or 0
             g_ms = topic_global_by_tid.get(tid)
 
-            if maturity_level == "New":
-                if not topic.new_discovery:
-                    continue
-            elif maturity_level != "All":
-                if (g_ms.threshold if g_ms else None) != maturity_level:
-                    continue
+            if not _passes_maturity_filter(topic, g_ms, maturity_level):
+                continue
 
             result.append(
                 _topic_to_schema(
@@ -498,12 +495,8 @@ class SowService:
             ssid = trend.ssid or 0
             g_ms = global_by_ssid.get(ssid)
 
-            if maturity_level == "New":
-                if not trend.new_discovery:
-                    continue
-            elif maturity_level != "All":
-                if (g_ms.threshold if g_ms else None) != maturity_level:
-                    continue
+            if not _passes_maturity_filter(trend, g_ms, maturity_level):
+                continue
 
             driver_count = len(
                 {
