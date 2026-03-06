@@ -2,9 +2,7 @@
 
 Queries span two schemas:
   - Public schema  : CIClient, Client, ClientCompanyProfile
-  - Tenant schema  : Brand, ProductLine, BusinessCategory, CustomerSegment
-
-Brand-related tenant queries are delegated to BrandRepository to avoid duplication.
+  - Tenant schema  : BusinessCategory, CustomerSegment
 """
 
 from typing import List, Optional
@@ -13,8 +11,7 @@ from sqlmodel import select
 
 from database.db_session_provider import DBSessionProvider
 from database.public_models.models import CIClient, Client, ClientCompanyProfile
-from database.tenant_models.models import Brand, BusinessCategory, CustomerSegment, ProductLine
-from repositories.brand_repository import BrandRepository
+from database.tenant_models.models import BusinessCategory, CustomerSegment
 
 
 class CompanyRepository:
@@ -22,7 +19,6 @@ class CompanyRepository:
 
     def __init__(self, db_provider: DBSessionProvider) -> None:
         self.db = db_provider
-        self._brand_repo = BrandRepository(db_provider)
 
     # ------------------------------------------------------------------
     # Public schema queries
@@ -52,26 +48,6 @@ class CompanyRepository:
                 .limit(1)
             )
             return session.exec(stmt).first()  # type: ignore[no-any-return]
-
-    # ------------------------------------------------------------------
-    # Tenant schema — brand queries (delegated to BrandRepository)
-    # ------------------------------------------------------------------
-
-    def get_brands(self, tenant_schema: str) -> List[Brand]:
-        """Return all brands, distinct by brand_name, ordered alphabetically."""
-        return self._brand_repo.get_brands(tenant_schema)
-
-    def get_product_lines_by_brand_ids(
-        self, tenant_schema: str, brand_ids: List[int]
-    ) -> List[ProductLine]:
-        """Return all ProductLine rows for the given brand IDs."""
-        return self._brand_repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
-
-    def get_business_categories_by_ids(
-        self, tenant_schema: str, category_ids: List[int]
-    ) -> List[BusinessCategory]:
-        """Return BusinessCategory rows by ID (used to populate nested brand data)."""
-        return self._brand_repo.get_business_categories_by_ids(tenant_schema, category_ids)
 
     # ------------------------------------------------------------------
     # Tenant schema — company-specific queries

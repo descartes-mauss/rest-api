@@ -10,6 +10,11 @@ from main import app
 from routes.topic_router import get_topic_service
 from services.topic_service import TopicService
 
+
+class BaseFakeSowRepo:
+    pass  # no SowRepository methods needed by these tests
+
+
 NOW = datetime.datetime.now(datetime.UTC)
 
 
@@ -136,7 +141,7 @@ def test_get_topic_sources_found(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Source, Source]]:
             return [(t2s, source)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-1/sources")
     assert resp.status_code == 200
@@ -154,7 +159,7 @@ def test_get_topic_sources_topic_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_by_topic_id returns None by default
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/nonexistent/sources")
     assert resp.status_code == 200
@@ -170,7 +175,7 @@ def test_get_topic_sources_no_sources(client: TestClient) -> None:
         def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
             return topic
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-1/sources")
     assert resp.status_code == 200
@@ -189,7 +194,7 @@ def test_update_topic_status_success(client: TestClient) -> None:
         def update_status(self, tenant_schema: str, tid: int, status_id: int) -> bool:
             return True
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.post("/api/v2/topics/1/status", json={"status_id": 2})
     assert resp.status_code == 200
@@ -200,7 +205,7 @@ def test_update_topic_status_invalid_status(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.post("/api/v2/topics/1/status", json={"status_id": 99})
     assert resp.status_code == 404
@@ -212,7 +217,7 @@ def test_update_topic_status_topic_not_found(client: TestClient) -> None:
         def update_status(self, tenant_schema: str, tid: int, status_id: int) -> bool:
             return False
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.post("/api/v2/topics/999/status", json={"status_id": 1})
     assert resp.status_code == 404
@@ -223,7 +228,7 @@ def test_update_topic_status_all_valid_codes(client: TestClient) -> None:
         def update_status(self, tenant_schema: str, tid: int, status_id: int) -> bool:
             return True
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     for status_id in range(5):  # 0-4 are valid
         resp = client.post("/api/v2/topics/1/status", json={"status_id": status_id})
@@ -245,7 +250,7 @@ def test_get_topic_drivers_success(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d, driver)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/1/drivers")
     assert resp.status_code == 200
@@ -261,7 +266,7 @@ def test_get_topic_drivers_no_drivers(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/1/drivers")
     assert resp.status_code == 200
@@ -278,7 +283,7 @@ def test_get_topic_drivers_null_influence(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d, driver)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/1/drivers")
     assert resp.status_code == 200
@@ -301,7 +306,7 @@ def test_get_topic_drivers_multiple(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d_a, driver_a), (t2d_b, driver_b)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/5/drivers")
     assert resp.status_code == 200

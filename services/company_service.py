@@ -12,6 +12,7 @@ from database.schemas.company import (
     CustomerSegmentSchema,
 )
 from database.tenant_models.models import Brand, BusinessCategory, ProductLine
+from repositories.brand_repository import BrandRepository
 from repositories.company_repository import CompanyRepository
 from services.brand_service import _assemble_brand_schema
 
@@ -33,8 +34,9 @@ def _build_brands(
 class CompanyService:
     """Orchestrates cross-schema data fetching and assembles the company response."""
 
-    def __init__(self, repo: CompanyRepository) -> None:
+    def __init__(self, repo: CompanyRepository, brand_repo: BrandRepository) -> None:
         self.repo = repo
+        self.brand_repo = brand_repo
 
     def get_company(self, tenant_schema: str) -> CompanyResponse:
         ci_client = self.repo.get_ci_client(tenant_schema.lower())
@@ -53,13 +55,15 @@ class CompanyService:
 
         image_uri = self.repo.get_cs_client_image(tenant_schema)
 
-        brands = self.repo.get_brands(tenant_schema)
+        brands = self.brand_repo.get_brands(tenant_schema)
         brand_ids = [b.id for b in brands if b.id is not None]
         category_ids = list(
             {b.brand_business_category_id for b in brands if b.brand_business_category_id}
         )
-        product_lines = self.repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
-        brand_categories = self.repo.get_business_categories_by_ids(tenant_schema, category_ids)
+        product_lines = self.brand_repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
+        brand_categories = self.brand_repo.get_business_categories_by_ids(
+            tenant_schema, category_ids
+        )
 
         customer_segments = self.repo.get_customer_segments(tenant_schema)
         all_business_categories = self.repo.get_all_business_categories(tenant_schema)

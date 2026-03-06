@@ -4,6 +4,7 @@ from typing import Any, List
 
 from database.schemas.deepdive import DeepdiveResponse
 from external.s3_rest_client import S3RestClient
+from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
 
 _MANIFESTATIONS_LIMIT = 4
@@ -21,8 +22,14 @@ _DESCRIPTION_KEYS = (
 class DeepdiveService:
     """Orchestrates the topic deepdive by fetching from S3 and post-processing."""
 
-    def __init__(self, topic_repository: TopicRepository, s3_client: S3RestClient) -> None:
+    def __init__(
+        self,
+        topic_repository: TopicRepository,
+        sow_repository: SowRepository,
+        s3_client: S3RestClient,
+    ) -> None:
         self.topic_repository = topic_repository
+        self.sow_repository = sow_repository
         self.s3_client = s3_client
 
     def get_topic_deepdive(self, tenant_schema: str, topic_id: str) -> DeepdiveResponse:
@@ -31,7 +38,7 @@ class DeepdiveService:
         if topic is None or topic.tid is None or topic.sid is None:
             return DeepdiveResponse()
 
-        sow = self.topic_repository.get_sow_by_sid(tenant_schema, topic.sid)
+        sow = self.sow_repository.get_sow_by_id(tenant_schema, topic.sid)
         cs_sow_id = sow.cs_sow_id if sow and sow.cs_sow_id else ""
 
         provocations = self._get_provocations(tenant_schema, cs_sow_id, topic.topic_id)

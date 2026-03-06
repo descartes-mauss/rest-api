@@ -20,6 +20,31 @@ from main import app
 from routes.topic_router import get_topic_service
 from services.topic_service import TopicService
 
+# ---------------------------------------------------------------------------
+# BaseFakeSowRepo — empty defaults for SowRepository cross-domain methods
+# ---------------------------------------------------------------------------
+
+
+class BaseFakeSowRepo:
+    def get_maturity_score_sources(
+        self, tenant_schema: str, score_ids: List[int]
+    ) -> List[MaturityScoreSource]:
+        return []
+
+    def get_trends_by_ssids(self, tenant_schema: str, ssids: List[int]) -> List[Trend]:
+        return []
+
+    def get_maturity_scores_for_trend_ids(
+        self, tenant_schema: str, ssids: List[int]
+    ) -> List[MaturityScore]:
+        return []
+
+    def get_maturity_score_deltas_for_sow_trends(
+        self, tenant_schema: str, sow_sid: int, trend_id_strings: List[str]
+    ) -> List[MaturityScoreDelta]:
+        return []
+
+
 NOW = datetime.datetime.now(datetime.UTC)
 
 
@@ -103,24 +128,8 @@ class BaseFakeRepo:
     def get_maturity_scores_for_topic(self, tenant_schema: str, tid: int) -> List[MaturityScore]:
         return []
 
-    def get_maturity_score_sources_for_ids(
-        self, tenant_schema: str, score_ids: List[int]
-    ) -> List[MaturityScoreSource]:
-        return []
-
     def get_maturity_score_deltas_for_topic(
         self, tenant_schema: str, sow_sid: int, topic_id: str
-    ) -> List[MaturityScoreDelta]:
-        return []
-
-    def get_trend_by_ssid(self, tenant_schema: str, ssid: int) -> Optional[Trend]:
-        return None
-
-    def get_maturity_scores_for_trend(self, tenant_schema: str, ssid: int) -> List[MaturityScore]:
-        return []
-
-    def get_maturity_score_deltas_for_trend(
-        self, tenant_schema: str, sow_sid: int, trend_id: str
     ) -> List[MaturityScoreDelta]:
         return []
 
@@ -137,7 +146,7 @@ def test_list_topics(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> Non
         def get_all(self, tenant_schema: str) -> List[Topic]:
             return topics
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics")
     assert resp.status_code == 200
@@ -160,7 +169,7 @@ def test_get_topic_found(monkeypatch: pytest.MonkeyPatch, client: TestClient) ->
         def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
             return t
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-42")
     assert resp.status_code == 200
@@ -196,7 +205,7 @@ def test_get_topic_found_with_drivers(client: TestClient) -> None:
         ) -> List[Tuple[Topic2Driver, Driver]]:
             return [(t2d, driver)]
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/topic-10")
     assert resp.status_code == 200
@@ -208,7 +217,7 @@ def test_get_topic_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_topic_service] = lambda: TopicService(FakeRepo(), BaseFakeSowRepo())  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/does-not-exist")
     assert resp.status_code == 404

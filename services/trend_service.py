@@ -9,7 +9,7 @@ from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic, Trend
 from repositories.sow_repository import SowRepository
-from services.sow_service import (
+from services._maturity_helpers import (
     _assemble_topic_schema,
     _assemble_trend_schema,
     _build_sources_map,

@@ -15,6 +15,7 @@ from database.schemas.topic import (
 )
 from external.s3_rest_client import S3RestClient
 from jwt_validator import get_tenant_schema
+from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
 from services.deepdive_service import DeepdiveService
 from services.topic_service import TopicService
@@ -34,16 +35,29 @@ def get_topic_repository() -> TopicRepository:
     return TopicRepository(db_manager.db)
 
 
-def get_topic_service(repo: TopicRepository = Depends(get_topic_repository)) -> TopicService:
-    return TopicService(repo)
+def get_sow_repository() -> SowRepository:
+    """Create a `SowRepository` using the real DB provider."""
+    from database import manager as db_manager
+
+    return SowRepository(db_manager.db)
 
 
-def get_deepdive_service(repo: TopicRepository = Depends(get_topic_repository)) -> DeepdiveService:
+def get_topic_service(
+    topic_repo: TopicRepository = Depends(get_topic_repository),
+    sow_repo: SowRepository = Depends(get_sow_repository),
+) -> TopicService:
+    return TopicService(topic_repo, sow_repo)
+
+
+def get_deepdive_service(
+    topic_repo: TopicRepository = Depends(get_topic_repository),
+    sow_repo: SowRepository = Depends(get_sow_repository),
+) -> DeepdiveService:
     s3_client = S3RestClient(
         base_url=os.environ.get("S3_URL", ""),
         api_key=os.environ.get("S3_API_KEY", ""),
     )
-    return DeepdiveService(repo, s3_client)
+    return DeepdiveService(topic_repo, sow_repo, s3_client)
 
 
 @topic_router.get("/", response_model=TopicsListResponse)
