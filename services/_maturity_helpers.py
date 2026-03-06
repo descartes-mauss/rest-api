@@ -30,7 +30,7 @@ def _build_sources_map(
 
 
 # ------------------------------------------------------------------
-# Generic split helpers (Step 5: eliminate copy-paste)
+# Generic split helpers
 # ------------------------------------------------------------------
 
 
