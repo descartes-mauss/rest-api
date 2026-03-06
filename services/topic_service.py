@@ -15,13 +15,13 @@ from database.tenant_models.models import Topic
 from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
 from services._maturity_helpers import (
-    _assemble_topic_schema,
-    _assemble_trend_schema,
     _build_sources_map,
     _split_topic_deltas,
     _split_topic_scores,
     _split_trend_deltas,
     _split_trend_scores,
+    _topic_to_schema,
+    _trend_to_schema,
 )
 
 _STATUS_MAP = {
@@ -90,7 +90,7 @@ class TopicService:
                 tr_sources_by_score = _build_sources_map(tr_sources)
                 tr_global_by_ssid, tr_non_global_by_ssid = _split_trend_scores(tr_scores)
                 tr_global_delta_by_id, tr_non_global_deltas_by_id = _split_trend_deltas(tr_deltas)
-                trend_schema_by_ssid[topic.ssid] = _assemble_trend_schema(
+                trend_schema_by_ssid[topic.ssid] = _trend_to_schema(
                     trend,
                     tr_sources_by_score,
                     tr_global_by_ssid,
@@ -100,7 +100,7 @@ class TopicService:
                     rel_topics_by_ssid={},  # mirrors UnlinkedTrendSerializer
                 )
 
-        return _assemble_topic_schema(
+        return _topic_to_schema(
             topic,
             sources_by_score,
             global_by_tid,

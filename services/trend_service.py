@@ -10,13 +10,13 @@ from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic, Trend
 from repositories.sow_repository import SowRepository
 from services._maturity_helpers import (
-    _assemble_topic_schema,
-    _assemble_trend_schema,
     _build_sources_map,
     _split_topic_deltas,
     _split_topic_scores,
     _split_trend_deltas,
     _split_trend_scores,
+    _topic_to_schema,
+    _trend_to_schema,
 )
 
 __all__ = ["TrendService"]
@@ -57,7 +57,7 @@ class TrendService:
             if t.ssid is not None:
                 rel_topics_by_ssid[t.ssid].append(t)
 
-        return _assemble_trend_schema(
+        return _trend_to_schema(
             trend,
             sources_by_score,
             global_by_ssid,
@@ -113,7 +113,7 @@ class TrendService:
             if t.ssid is not None:
                 topics_by_trend_ssid[t.ssid].append(t)
 
-        trend_schema = _assemble_trend_schema(
+        trend_schema = _trend_to_schema(
             trend,
             trend_sources_by_score,
             trend_global_by_ssid,
@@ -125,7 +125,7 @@ class TrendService:
         trend_schema_by_ssid = {ssid: trend_schema} if trend.ssid else {}
 
         return [
-            _assemble_topic_schema(
+            _topic_to_schema(
                 topic,
                 topic_sources_by_score,
                 topic_global_by_tid,

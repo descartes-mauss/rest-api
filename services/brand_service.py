@@ -5,35 +5,10 @@ from typing import Dict, List
 
 from fastapi import HTTPException
 
-from database.schemas.brand import BrandSchema, BusinessCategorySchema, ProductLineSchema
-from database.tenant_models.models import Brand, BusinessCategory, ProductLine
+from database.schemas.brand import BrandSchema
+from database.tenant_models.models import BusinessCategory, ProductLine
 from repositories.brand_repository import BrandRepository
-
-
-def _assemble_brand_schema(
-    brand: Brand,
-    categories_by_id: Dict[int, BusinessCategory],
-    product_lines_by_brand_id: Dict[int, List[ProductLine]],
-) -> BrandSchema:
-    cat = (
-        categories_by_id.get(brand.brand_business_category_id)
-        if brand.brand_business_category_id
-        else None
-    )
-    return BrandSchema(
-        id=brand.id,
-        brand_name=brand.brand_name,
-        brand_description=brand.brand_description,
-        brand_purpose=brand.brand_purpose,
-        brand_mission=brand.brand_mission,
-        brand_attributes=brand.brand_attributes,
-        brand_country=brand.brand_country,
-        brand_business_category=BusinessCategorySchema.model_validate(cat) if cat else None,
-        product_lines=[
-            ProductLineSchema.model_validate(pl)
-            for pl in product_lines_by_brand_id.get(brand.id or 0, [])
-        ],
-    )
+from services.assemblers.brand_assembler import _brand_to_schema
 
 
 class BrandService:
@@ -61,7 +36,7 @@ class BrandService:
 
         cat_by_id: Dict[int, BusinessCategory] = {c.id: c for c in categories if c.id}
 
-        return [_assemble_brand_schema(b, cat_by_id, pl_by_brand) for b in brands]
+        return [_brand_to_schema(b, cat_by_id, pl_by_brand) for b in brands]
 
     def get_brand(self, tenant_schema: str, brand_id: int) -> BrandSchema:
         brand = self.repo.get_brand_by_id(tenant_schema, brand_id)
@@ -79,4 +54,4 @@ class BrandService:
         pl_by_brand: Dict[int, List[ProductLine]] = {brand.id or 0: product_lines}
         cat_by_id: Dict[int, BusinessCategory] = {c.id: c for c in categories if c.id}
 
-        return _assemble_brand_schema(brand, cat_by_id, pl_by_brand)
+        return _brand_to_schema(brand, cat_by_id, pl_by_brand)

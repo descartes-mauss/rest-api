@@ -21,14 +21,14 @@ from database.tenant_models.models import (
 )
 from repositories.sow_repository import SowRepository
 from services._maturity_helpers import (
-    _assemble_topic_schema,
-    _assemble_trend_schema,
     _build_sources_map,
     _split_topic_deltas,
     _split_topic_scores,
     _split_trend_deltas,
     _split_trend_scores,
+    _topic_to_schema,
     _trend_sort_key,
+    _trend_to_schema,
 )
 
 _WEEKLY_INSIGHTS_MAX_SIZE = 8
@@ -39,7 +39,7 @@ _WEEKLY_INSIGHTS_MAX_SIZE = 8
 # ------------------------------------------------------------------
 
 
-def _assemble_sow_schema(
+def _sow_to_schema(
     sow: TenantSow,
     geo_map: Dict[str, Tuple[Optional[str], Optional[str]]],
 ) -> SowSchema:
@@ -92,7 +92,7 @@ class SowService:
         rows = self.repo.get_sow_geographies(cs_sow_ids) if cs_sow_ids else []
         geo_map = _build_geo_map(rows)
 
-        return [_assemble_sow_schema(sow, geo_map) for sow in sows]
+        return [_sow_to_schema(sow, geo_map) for sow in sows]
 
     def get_sow(self, tenant_schema: str, sow_id: int) -> SowSchema:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
@@ -107,7 +107,7 @@ class SowService:
         rows = self.repo.get_sow_geographies([sow.cs_sow_id])
         geo_map = _build_geo_map(rows)
 
-        return _assemble_sow_schema(sow, geo_map)
+        return _sow_to_schema(sow, geo_map)
 
     # ------------------------------------------------------------------
     # SOW sub-endpoints
@@ -143,7 +143,7 @@ class SowService:
 
         shifts: Dict[str, ShiftSchema] = {}
         for t in sorted_trends:
-            trend_schema = _assemble_trend_schema(
+            trend_schema = _trend_to_schema(
                 t,
                 sources_by_score,
                 global_by_ssid,
@@ -179,7 +179,7 @@ class SowService:
 
         geo_rows = self.repo.get_sow_geographies([sow.cs_sow_id] if sow.cs_sow_id else [])
         geo_map = _build_geo_map(geo_rows)
-        sow_schema = _assemble_sow_schema(sow, geo_map)
+        sow_schema = _sow_to_schema(sow, geo_map)
 
         return [
             DriverSchema(
@@ -207,7 +207,7 @@ class SowService:
         rows = self.repo.get_sow_geographies(list(set(cs_sow_ids))) if cs_sow_ids else []
         geo_map = _build_geo_map(rows)
 
-        return [_assemble_sow_schema(v, geo_map) for v in versions]
+        return [_sow_to_schema(v, geo_map) for v in versions]
 
     def get_opportunities(self, tenant_schema: str, sow_id: int) -> List[OpportunitySchema]:
         sow = self._get_sow_or_404(tenant_schema, sow_id)
@@ -266,7 +266,7 @@ class SowService:
                 rel_topics_by_ssid[rt.ssid].append(rt)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _assemble_trend_schema(
+            tr.ssid: _trend_to_schema(
                 tr,
                 trend_sources_by_score,
                 trend_global_by_ssid,
@@ -284,7 +284,7 @@ class SowService:
             opp_tids = tids_by_opp.get(opp.oid or 0, [])
             opp_topics = [topics_by_tid[tid] for tid in opp_tids if tid in topics_by_tid]
             topic_schemas = [
-                _assemble_topic_schema(
+                _topic_to_schema(
                     t,
                     topic_sources_by_score,
                     topic_global_by_tid,
@@ -368,7 +368,7 @@ class SowService:
                 topics_by_trend_ssid[t.ssid].append(t)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _assemble_trend_schema(
+            tr.ssid: _trend_to_schema(
                 tr,
                 trend_sources_by_score,
                 trend_global_by_ssid,
@@ -394,7 +394,7 @@ class SowService:
                     continue
 
             result.append(
-                _assemble_topic_schema(
+                _topic_to_schema(
                     topic,
                     topic_sources_by_score,
                     topic_global_by_tid,
@@ -487,7 +487,7 @@ class SowService:
                 }
             )
             result.append(
-                _assemble_trend_schema(
+                _trend_to_schema(
                     trend,
                     sources_by_score,
                     global_by_ssid,
@@ -561,7 +561,7 @@ class SowService:
             )
         return self._assemble_foresight(tenant_schema, sow, insights, total, page, limit)
 
-    def _build_topic_predictions(
+    def _fetch_topic_predictions(
         self, tenant_schema: str, sow_sid: int, entity_ids: List[str]
     ) -> Dict[str, List[TopicSchema]]:
         topic_schema_by_topic_id: Dict[str, List[TopicSchema]] = defaultdict(list)
@@ -611,7 +611,7 @@ class SowService:
                 topics_by_trend_ssid[t.ssid].append(t)
 
         trend_schema_by_ssid: Dict[int, TrendSchema] = {
-            tr.ssid: _assemble_trend_schema(
+            tr.ssid: _trend_to_schema(
                 tr,
                 tt_sources_by_score,
                 tt_global_by_ssid,
@@ -626,7 +626,7 @@ class SowService:
 
         for t in pred_topics:
             topic_schema_by_topic_id[t.topic_id].append(
-                _assemble_topic_schema(
+                _topic_to_schema(
                     t,
                     t_sources_by_score,
                     t_global_by_tid,
@@ -639,7 +639,7 @@ class SowService:
             )
         return topic_schema_by_topic_id
 
-    def _build_trend_predictions(
+    def _fetch_trend_predictions(
         self, tenant_schema: str, sow_sid: int, entity_ids: List[str]
     ) -> Dict[str, List[TrendSchema]]:
         trend_schema_by_trend_id: Dict[str, List[TrendSchema]] = defaultdict(list)
@@ -687,7 +687,7 @@ class SowService:
                 }
             )
             trend_schema_by_trend_id[tr.trend_id].append(
-                _assemble_trend_schema(
+                _trend_to_schema(
                     tr,
                     tr_sources_by_score,
                     tr_global_by_ssid,
@@ -729,12 +729,12 @@ class SowService:
         trend_entity_ids = list({i.entity_id for i in insights if i.entity_type == "trend"})
 
         topic_schema_by_topic_id = (
-            self._build_topic_predictions(tenant_schema, sow_sid, topic_entity_ids)
+            self._fetch_topic_predictions(tenant_schema, sow_sid, topic_entity_ids)
             if topic_entity_ids
             else {}
         )
         trend_schema_by_trend_id = (
-            self._build_trend_predictions(tenant_schema, sow_sid, trend_entity_ids)
+            self._fetch_trend_predictions(tenant_schema, sow_sid, trend_entity_ids)
             if trend_entity_ids
             else {}
         )
