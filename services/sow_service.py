@@ -19,7 +19,7 @@ from database.tenant_models.models import (
     TenantSow,
     Topic,
 )
-from repositories.sow_repository import SowRepository
+from repositories.protocols import SowRepositoryProtocol
 from services.assemblers.maturity_context import _build_topic_context, _build_trend_context
 from services.assemblers.topic_assembler import _topic_to_schema
 from services.assemblers.trend_assembler import (
@@ -66,7 +66,7 @@ def _build_geo_map(
 class SowService:
     """Orchestrates data fetching and assembles SOW responses."""
 
-    def __init__(self, sow_repository: SowRepository) -> None:
+    def __init__(self, sow_repository: SowRepositoryProtocol) -> None:
         self.sow_repository = sow_repository
 
     def _get_sow_or_404(self, tenant_schema: str, sow_id: int) -> TenantSow:

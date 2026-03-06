@@ -60,9 +60,7 @@ def test_list_tenant_users(client: TestClient) -> None:
         def get_all(self, tenant_schema: str) -> List[TenantUser]:
             return users
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.get("/api/v2/users/")
     assert resp.status_code == 200
@@ -78,9 +76,7 @@ def test_list_tenant_users_empty(client: TestClient) -> None:
         def get_all(self, tenant_schema: str) -> List[TenantUser]:
             return []
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.get("/api/v2/users/")
     assert resp.status_code == 200
@@ -99,9 +95,7 @@ def test_get_tenant_user_found(client: TestClient) -> None:
         def get_by_id(self, tenant_schema: str, user_id: UUID) -> Optional[TenantUser]:
             return user
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.get(f"/api/v2/users/{USER_ID}")
     assert resp.status_code == 200
@@ -115,9 +109,7 @@ def test_get_tenant_user_not_found(client: TestClient) -> None:
         def get_by_id(self, tenant_schema: str, user_id: UUID) -> Optional[TenantUser]:
             return None
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.get(f"/api/v2/users/{uuid4()}")
     assert resp.status_code == 404
@@ -136,9 +128,7 @@ def test_create_tenant_user(client: TestClient) -> None:
         def create(self, tenant_schema: str, user: TenantUser) -> TenantUser:
             return created_user
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.post(
         "/api/v2/users/",
@@ -167,9 +157,7 @@ def test_update_tenant_user(client: TestClient) -> None:
         def update(self, tenant_schema: str, user: TenantUser) -> TenantUser:
             return updated
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.put(
         f"/api/v2/users/{USER_ID}",
@@ -191,9 +179,7 @@ def test_update_tenant_user_not_found(client: TestClient) -> None:
         def get_by_id(self, tenant_schema: str, user_id: UUID) -> Optional[TenantUser]:
             return None
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.put(
         f"/api/v2/users/{uuid4()}",
@@ -219,9 +205,7 @@ def test_delete_tenant_user(client: TestClient) -> None:
         def delete(self, tenant_schema: str, user_id: UUID) -> bool:
             return True
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.delete(f"/api/v2/users/{USER_ID}")
     assert resp.status_code == 204
@@ -232,9 +216,7 @@ def test_delete_tenant_user_not_found(client: TestClient) -> None:
         def delete(self, tenant_schema: str, user_id: UUID) -> bool:
             return False
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.delete(f"/api/v2/users/{uuid4()}")
     assert resp.status_code == 404
@@ -252,9 +234,7 @@ def test_missing_org_id(client: TestClient) -> None:
         def get_all(self, tenant_schema: str) -> List[TenantUser]:
             return []
 
-    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(
-        FakeRepo()  # type: ignore[arg-type]
-    )
+    app.dependency_overrides[get_tenant_user_service] = lambda: TenantUserService(FakeRepo())
 
     resp = client.get("/api/v2/users/")
     assert resp.status_code == 400

@@ -132,7 +132,9 @@ def test_get_company_success(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return [category]
 
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(
+        FakeCompanyRepo(), FakeBrandRepo()
+    )
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 200
@@ -195,7 +197,9 @@ def test_get_company_no_profile(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(
+        FakeCompanyRepo(), FakeBrandRepo()
+    )
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 200
@@ -238,7 +242,9 @@ def test_get_company_client_not_found(client: TestClient) -> None:
         ) -> List[BusinessCategory]:
             return []
 
-    app.dependency_overrides[get_company_service] = lambda: CompanyService(FakeCompanyRepo(), FakeBrandRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_company_service] = lambda: CompanyService(
+        FakeCompanyRepo(), FakeBrandRepo()
+    )
 
     resp = client.get("/api/v2/companies")
     assert resp.status_code == 404

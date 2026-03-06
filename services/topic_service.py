@@ -12,8 +12,7 @@ from database.schemas.topic import (
 )
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic
-from repositories.sow_repository import SowRepository
-from repositories.topic_repository import TopicRepository
+from repositories.protocols import SowRepositoryProtocol, TopicRepositoryProtocol
 from services.assemblers.maturity_context import _build_topic_context, _build_trend_context
 from services.assemblers.topic_assembler import _topic_to_schema
 from services.assemblers.trend_assembler import _trend_to_schema
@@ -30,7 +29,9 @@ _STATUS_MAP = {
 class TopicService:
     """Service layer for Topic-related business logic."""
 
-    def __init__(self, topic_repository: TopicRepository, sow_repository: SowRepository) -> None:
+    def __init__(
+        self, topic_repository: TopicRepositoryProtocol, sow_repository: SowRepositoryProtocol
+    ) -> None:
         self.topic_repository = topic_repository
         self.sow_repository = sow_repository
 

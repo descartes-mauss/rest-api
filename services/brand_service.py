@@ -7,14 +7,14 @@ from fastapi import HTTPException
 
 from database.schemas.brand import BrandSchema
 from database.tenant_models.models import BusinessCategory, ProductLine
-from repositories.brand_repository import BrandRepository
+from repositories.protocols import BrandRepositoryProtocol
 from services.assemblers.brand_assembler import _brand_to_schema
 
 
 class BrandService:
     """Orchestrates data fetching and assembles brand responses."""
 
-    def __init__(self, brand_repository: BrandRepository) -> None:
+    def __init__(self, brand_repository: BrandRepositoryProtocol) -> None:
         self.brand_repository = brand_repository
 
     def get_brands(self, tenant_schema: str) -> List[BrandSchema]:

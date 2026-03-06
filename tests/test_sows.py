@@ -83,7 +83,7 @@ def test_get_sows_success(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return [(pub_sow, geo)]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows")
     assert resp.status_code == 200
@@ -115,7 +115,7 @@ def test_get_sows_empty(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows")
     assert resp.status_code == 200
@@ -143,7 +143,7 @@ def test_get_sows_default_geography(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []  # no geography data available
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows")
     assert resp.status_code == 200
@@ -174,7 +174,7 @@ def test_get_sow_success(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return [(pub_sow, geo)]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1")
     assert resp.status_code == 200
@@ -203,7 +203,7 @@ def test_get_sow_not_found(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999")
     assert resp.status_code == 404
@@ -232,7 +232,7 @@ def test_get_sow_inactive(client: TestClient) -> None:
         ) -> List[Tuple[PublicSow, Optional[Geography]]]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/5")
     assert resp.status_code == 404

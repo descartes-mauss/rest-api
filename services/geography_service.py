@@ -5,13 +5,13 @@ from typing import List
 from fastapi import HTTPException
 
 from database.schemas.geography import GeographySchema
-from repositories.geography_repository import GeographyRepository
+from repositories.protocols import GeographyRepositoryProtocol
 
 
 class GeographyService:
     """Orchestrates data fetching and assembles the geographies response."""
 
-    def __init__(self, geography_repository: GeographyRepository) -> None:
+    def __init__(self, geography_repository: GeographyRepositoryProtocol) -> None:
         self.geography_repository = geography_repository
 
     def get_geographies(self, tenant_schema: str) -> List[GeographySchema]:

@@ -299,7 +299,7 @@ def test_get_sow_opportunities_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [tr_score]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200
@@ -333,7 +333,7 @@ def test_get_sow_opportunities_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/opportunities")
     assert resp.status_code == 404
@@ -347,7 +347,7 @@ def test_get_sow_opportunities_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200
@@ -366,7 +366,7 @@ def test_get_sow_opportunities_no_topics(client: TestClient) -> None:
         def get_opportunities_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Opportunity]:
             return [opp]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200

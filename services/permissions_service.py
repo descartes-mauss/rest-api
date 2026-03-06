@@ -3,13 +3,13 @@
 from fastapi import HTTPException
 
 from database.schemas.permissions import ExperimentSchema, PermissionsResponse
-from repositories.permissions_repository import PermissionsRepository
+from repositories.protocols import PermissionsRepositoryProtocol
 
 
 class PermissionsService:
     """Orchestrates data fetching and assembles the permissions response."""
 
-    def __init__(self, repository: PermissionsRepository) -> None:
+    def __init__(self, repository: PermissionsRepositoryProtocol) -> None:
         self.permissions_repository = repository
 
     def get_permissions(

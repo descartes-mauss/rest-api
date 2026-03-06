@@ -93,7 +93,9 @@ def test_deepdive_topic_not_found(client: TestClient) -> None:
         pass  # get_by_topic_id returns None
 
     s3 = make_fake_s3_client()
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), BaseFakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), BaseFakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/nonexistent/deepdive")
     assert resp.status_code == 200
@@ -132,7 +134,9 @@ def test_deepdive_returns_all_sections(client: TestClient) -> None:
         manifestations=[{"startup_names": "A"}, {"startup_names": "B"}],
         market_insights=[{"data_point": "X"}, {"data_point": "Y"}, {"data_point": "Z"}],
     )
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), FakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), FakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/topic-1/deepdive")
     assert resp.status_code == 200
@@ -159,7 +163,9 @@ def test_deepdive_manifestations_capped_at_4(client: TestClient) -> None:
 
     many_manifestations = [{"startup_names": f"S{i}"} for i in range(10)]
     s3 = make_fake_s3_client(manifestations=many_manifestations)
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), FakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), FakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/topic-1/deepdive")
     assert resp.status_code == 200
@@ -179,7 +185,9 @@ def test_deepdive_empty_s3_responses(client: TestClient) -> None:
             return sow
 
     s3 = make_fake_s3_client()
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), FakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), FakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/topic-1/deepdive")
     assert resp.status_code == 200
@@ -202,7 +210,9 @@ def test_deepdive_no_sow(client: TestClient) -> None:
     s3 = make_fake_s3_client(
         provocations=[{"provocation_one": "Q1"}],
     )
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), BaseFakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), BaseFakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/topic-1/deepdive")
     assert resp.status_code == 200
@@ -226,7 +236,9 @@ def test_deepdive_provocations_filters_nulls(client: TestClient) -> None:
     s3 = make_fake_s3_client(
         provocations=[{"provocation_one": "Only one", "other_key": "ignored"}],
     )
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), FakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(
+        FakeTopicRepo(), FakeSowRepo(), s3
+    )
 
     resp = client.get("/api/v2/topics/topic-1/deepdive")
     assert resp.status_code == 200

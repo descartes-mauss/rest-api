@@ -206,7 +206,7 @@ def test_get_trend_success(client: TestClient) -> None:
         def get_topics_for_trends(self, tenant_schema: str, trend_ssids: List[int]) -> List[Topic]:
             return [related_topic]
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/trend-abc")
     assert resp.status_code == 200
@@ -227,7 +227,7 @@ def test_get_trend_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_trend_by_trend_id returns None
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/nonexistent")
     assert resp.status_code == 404
@@ -242,7 +242,7 @@ def test_get_trend_no_maturity(client: TestClient) -> None:
         def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
             return trend
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/trend-abc")
     assert resp.status_code == 200
@@ -293,7 +293,7 @@ def test_get_trend_topics_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [trend_score]
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/trend-abc/topics")
     assert resp.status_code == 200
@@ -317,7 +317,7 @@ def test_get_trend_topics_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/nonexistent/topics")
     assert resp.status_code == 404
@@ -332,7 +332,7 @@ def test_get_trend_topics_empty(client: TestClient) -> None:
         def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
             return trend
 
-    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_trend_service] = lambda: TrendService(FakeRepo())
 
     resp = client.get("/api/v2/trends/trend-abc/topics")
     assert resp.status_code == 200

@@ -68,7 +68,7 @@ def test_get_permissions_success(client: TestClient) -> None:
         def has_opportunity_platforms(self, tenant_schema: str, sow_sid: int) -> bool:
             return True
 
-    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())
 
     resp = client.get("/api/v2/permissions/42")
     assert resp.status_code == 200
@@ -100,7 +100,7 @@ def test_get_permissions_sow_not_found(client: TestClient) -> None:
         def has_opportunity_platforms(self, tenant_schema: str, sow_sid: int) -> bool:
             return False
 
-    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())
 
     resp = client.get("/api/v2/permissions/999")
     assert resp.status_code == 404
@@ -124,7 +124,7 @@ def test_get_permissions_no_features(client: TestClient) -> None:
         def has_opportunity_platforms(self, tenant_schema: str, sow_sid: int) -> bool:
             return False
 
-    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())  # type: ignore[arg-type]
+    app.dependency_overrides[get_permissions_service] = lambda: PermissionsService(FakeRepo())
 
     resp = client.get("/api/v2/permissions/42")
     assert resp.status_code == 200
