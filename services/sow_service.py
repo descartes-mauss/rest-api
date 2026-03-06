@@ -20,11 +20,10 @@ from database.tenant_models.models import (
     Topic,
 )
 from repositories.sow_repository import SowRepository
-from services._maturity_helpers import (
-    _build_topic_context,
-    _build_trend_context,
+from services.assemblers.maturity_context import _build_topic_context, _build_trend_context
+from services.assemblers.topic_assembler import _topic_to_schema
+from services.assemblers.trend_assembler import (
     _passes_maturity_filter,
-    _topic_to_schema,
     _trend_sort_key,
     _trend_to_schema,
 )
