@@ -17,6 +17,7 @@ from database.tenant_models.models import (
     Topic,
     Trend,
 )
+from services.assemblers.maturity_context import MaturityContext
 
 
 def _build_sources_map(
@@ -117,18 +118,14 @@ def _maturity_score_to_schema(
 
 def _trend_to_schema(
     trend: Trend,
-    sources_by_score: Dict[int, List[MaturityScoreSource]],
-    global_by_ssid: Dict[int, MaturityScore],
-    non_global_by_ssid: Dict[int, List[MaturityScore]],
-    global_delta_by_id: Dict[str, MaturityScoreDelta],
-    non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]],
+    ctx: MaturityContext,
     rel_topics_by_ssid: Dict[int, List[Topic]],
     driver_count: Optional[int] = None,
 ) -> TrendSchema:
     """Construct a TrendSchema from a Trend and its pre-built lookup maps."""
     ssid = trend.ssid or 0
-    g_ms = global_by_ssid.get(ssid)
-    g_delta = global_delta_by_id.get(trend.trend_id)
+    g_ms = ctx.global_scores_by_id.get(ssid)
+    g_delta = ctx.global_deltas_by_id.get(trend.trend_id)
     return TrendSchema(
         ssid=trend.ssid,
         sow=trend.sid,
@@ -145,18 +142,20 @@ def _trend_to_schema(
         new_discovery=trend.new_discovery,
         driver_count=driver_count,
         maturity_scores=[
-            _maturity_score_to_schema(ms, sources_by_score.get(ms.id or 0, []))
-            for ms in sorted(non_global_by_ssid.get(ssid, []), key=lambda x: str(x.category))
+            _maturity_score_to_schema(ms, ctx.sources_by_score.get(ms.id or 0, []))
+            for ms in sorted(
+                ctx.non_global_scores_by_id.get(ssid, []), key=lambda x: str(x.category)
+            )
         ],
         maturity_scores_deltas=[
             MaturityScoreDeltaSchema.model_validate(d)
             for d in sorted(
-                non_global_deltas_by_id.get(trend.trend_id, []),
+                ctx.non_global_deltas_by_id.get(trend.trend_id, []),
                 key=lambda x: str(x.category),
             )
         ],
         global_maturity_score=(
-            _maturity_score_to_schema(g_ms, sources_by_score.get(g_ms.id or 0, []))
+            _maturity_score_to_schema(g_ms, ctx.sources_by_score.get(g_ms.id or 0, []))
             if g_ms
             else None
         ),
@@ -171,18 +170,14 @@ def _trend_to_schema(
 
 def _topic_to_schema(
     topic: Topic,
-    sources_by_score: Dict[int, List[MaturityScoreSource]],
-    global_by_tid: Dict[int, MaturityScore],
-    non_global_by_tid: Dict[int, List[MaturityScore]],
-    global_delta_by_id: Dict[str, MaturityScoreDelta],
-    non_global_deltas_by_id: Dict[str, List[MaturityScoreDelta]],
+    ctx: MaturityContext,
     trend_schema_by_ssid: Dict[int, TrendSchema],
     drivers_by_tid: Dict[int, List[int]],
 ) -> TopicSchema:
     """Construct a TopicSchema from a Topic and its pre-built lookup maps."""
     tid = topic.tid or 0
-    g_ms = global_by_tid.get(tid)
-    g_delta = global_delta_by_id.get(topic.topic_id)
+    g_ms = ctx.global_scores_by_id.get(tid)
+    g_delta = ctx.global_deltas_by_id.get(topic.topic_id)
     return TopicSchema(
         tid=topic.tid,
         sow=topic.sid,
@@ -198,18 +193,20 @@ def _topic_to_schema(
         trend=trend_schema_by_ssid.get(topic.ssid or 0),
         driver=drivers_by_tid.get(tid, []),
         maturity_scores=[
-            _maturity_score_to_schema(ms, sources_by_score.get(ms.id or 0, []))
-            for ms in sorted(non_global_by_tid.get(tid, []), key=lambda x: str(x.category))
+            _maturity_score_to_schema(ms, ctx.sources_by_score.get(ms.id or 0, []))
+            for ms in sorted(
+                ctx.non_global_scores_by_id.get(tid, []), key=lambda x: str(x.category)
+            )
         ],
         maturity_scores_deltas=[
             MaturityScoreDeltaSchema.model_validate(d)
             for d in sorted(
-                non_global_deltas_by_id.get(topic.topic_id, []),
+                ctx.non_global_deltas_by_id.get(topic.topic_id, []),
                 key=lambda x: str(x.category),
             )
         ],
         global_maturity_score=(
-            _maturity_score_to_schema(g_ms, sources_by_score.get(g_ms.id or 0, []))
+            _maturity_score_to_schema(g_ms, ctx.sources_by_score.get(g_ms.id or 0, []))
             if g_ms
             else None
         ),
@@ -238,3 +235,42 @@ def _passes_maturity_filter(
     if maturity_level == "All":
         return True
     return (global_score.threshold if global_score else None) == maturity_level
+
+
+# ------------------------------------------------------------------
+# MaturityContext factory helpers
+# ------------------------------------------------------------------
+
+
+def _build_trend_context(
+    scores: List[MaturityScore],
+    sources: List[MaturityScoreSource],
+    deltas: List[MaturityScoreDelta],
+) -> MaturityContext:
+    """Build a MaturityContext keyed by trend ssid (int) and trend_id (str)."""
+    global_scores, non_global_scores = _split_trend_scores(scores)
+    global_deltas, non_global_deltas = _split_trend_deltas(deltas)
+    return MaturityContext(
+        sources_by_score=_build_sources_map(sources),
+        global_scores_by_id=global_scores,
+        non_global_scores_by_id=non_global_scores,
+        global_deltas_by_id=global_deltas,
+        non_global_deltas_by_id=non_global_deltas,
+    )
+
+
+def _build_topic_context(
+    scores: List[MaturityScore],
+    sources: List[MaturityScoreSource],
+    deltas: List[MaturityScoreDelta],
+) -> MaturityContext:
+    """Build a MaturityContext keyed by topic tid (int) and topic_id (str)."""
+    global_scores, non_global_scores = _split_topic_scores(scores)
+    global_deltas, non_global_deltas = _split_topic_deltas(deltas)
+    return MaturityContext(
+        sources_by_score=_build_sources_map(sources),
+        global_scores_by_id=global_scores,
+        non_global_scores_by_id=non_global_scores,
+        global_deltas_by_id=global_deltas,
+        non_global_deltas_by_id=non_global_deltas,
+    )

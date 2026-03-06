@@ -10,11 +10,8 @@ from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic, Trend
 from repositories.sow_repository import SowRepository
 from services._maturity_helpers import (
-    _build_sources_map,
-    _split_topic_deltas,
-    _split_topic_scores,
-    _split_trend_deltas,
-    _split_trend_scores,
+    _build_topic_context,
+    _build_trend_context,
     _topic_to_schema,
     _trend_to_schema,
 )
@@ -48,24 +45,14 @@ class TrendService:
         )
         related_topics = self.sow_repository.get_topics_for_trends(tenant_schema, [ssid])
 
-        sources_by_score = _build_sources_map(sources)
-        global_by_ssid, non_global_by_ssid = _split_trend_scores(scores)
-        global_delta_by_id, non_global_deltas_by_id = _split_trend_deltas(deltas)
+        trend_ctx = _build_trend_context(scores, sources, deltas)
 
         rel_topics_by_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for t in related_topics:
             if t.ssid is not None:
                 rel_topics_by_ssid[t.ssid].append(t)
 
-        return _trend_to_schema(
-            trend,
-            sources_by_score,
-            global_by_ssid,
-            non_global_by_ssid,
-            global_delta_by_id,
-            non_global_deltas_by_id,
-            rel_topics_by_ssid,
-        )
+        return _trend_to_schema(trend, trend_ctx, rel_topics_by_ssid)
 
     def get_trend_topics(self, tenant_schema: str, trend_id: str) -> List[TopicSchema]:
         """Return all topics belonging to the given trend_id."""
@@ -102,44 +89,23 @@ class TrendService:
             tenant_schema, sow_sid, [trend.trend_id]
         )
 
-        topic_sources_by_score = _build_sources_map(topic_sources)
-        topic_global_by_tid, topic_non_global_by_tid = _split_topic_scores(topic_scores)
-        topic_global_delta_by_id, topic_non_global_deltas_by_id = _split_topic_deltas(topic_deltas)
+        topic_ctx = _build_topic_context(topic_scores, topic_sources, topic_deltas)
 
         drivers_by_tid: Dict[int, List[int]] = defaultdict(list)
         for row in t2d_rows:
             drivers_by_tid[row.tid].append(row.did)
 
-        trend_sources_by_score = _build_sources_map(trend_sources)
-        trend_global_by_ssid, trend_non_global_by_ssid = _split_trend_scores(trend_scores)
-        trend_global_delta_by_id, trend_non_global_deltas_by_id = _split_trend_deltas(trend_deltas)
+        trend_ctx = _build_trend_context(trend_scores, trend_sources, trend_deltas)
 
         topics_by_trend_ssid: Dict[int, List[Topic]] = defaultdict(list)
         for t in topics:
             if t.ssid is not None:
                 topics_by_trend_ssid[t.ssid].append(t)
 
-        trend_schema = _trend_to_schema(
-            trend,
-            trend_sources_by_score,
-            trend_global_by_ssid,
-            trend_non_global_by_ssid,
-            trend_global_delta_by_id,
-            trend_non_global_deltas_by_id,
-            topics_by_trend_ssid,
-        )
+        trend_schema = _trend_to_schema(trend, trend_ctx, topics_by_trend_ssid)
         trend_schema_by_ssid = {ssid: trend_schema} if trend.ssid else {}
 
         return [
-            _topic_to_schema(
-                topic,
-                topic_sources_by_score,
-                topic_global_by_tid,
-                topic_non_global_by_tid,
-                topic_global_delta_by_id,
-                topic_non_global_deltas_by_id,
-                trend_schema_by_ssid,
-                drivers_by_tid,
-            )
+            _topic_to_schema(topic, topic_ctx, trend_schema_by_ssid, drivers_by_tid)
             for topic in topics
         ]
