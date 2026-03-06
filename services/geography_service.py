@@ -11,15 +11,15 @@ from repositories.geography_repository import GeographyRepository
 class GeographyService:
     """Orchestrates data fetching and assembles the geographies response."""
 
-    def __init__(self, repo: GeographyRepository) -> None:
-        self.repo = repo
+    def __init__(self, geography_repository: GeographyRepository) -> None:
+        self.geography_repository = geography_repository
 
     def get_geographies(self, tenant_schema: str) -> List[GeographySchema]:
-        client_id = self.repo.get_client_id(tenant_schema)
+        client_id = self.geography_repository.get_client_id(tenant_schema)
         if client_id is None:
             raise HTTPException(status_code=404, detail="Client not found")
 
-        rows = self.repo.get_active_geographies(client_id)
+        rows = self.geography_repository.get_active_geographies(client_id)
         return [
             GeographySchema(
                 geography_id=geography.geography_id,

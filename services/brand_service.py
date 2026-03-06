@@ -14,11 +14,11 @@ from services.assemblers.brand_assembler import _brand_to_schema
 class BrandService:
     """Orchestrates data fetching and assembles brand responses."""
 
-    def __init__(self, repo: BrandRepository) -> None:
-        self.repo = repo
+    def __init__(self, brand_repository: BrandRepository) -> None:
+        self.brand_repository = brand_repository
 
     def get_brands(self, tenant_schema: str) -> List[BrandSchema]:
-        brands = self.repo.get_brands(tenant_schema)
+        brands = self.brand_repository.get_brands(tenant_schema)
         if not brands:
             return []
 
@@ -27,8 +27,12 @@ class BrandService:
             {b.brand_business_category_id for b in brands if b.brand_business_category_id}
         )
 
-        product_lines = self.repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
-        categories = self.repo.get_business_categories_by_ids(tenant_schema, category_ids)
+        product_lines = self.brand_repository.get_product_lines_by_brand_ids(
+            tenant_schema, brand_ids
+        )
+        categories = self.brand_repository.get_business_categories_by_ids(
+            tenant_schema, category_ids
+        )
 
         pl_by_brand: Dict[int, List[ProductLine]] = defaultdict(list)
         for pl in product_lines:
@@ -39,7 +43,7 @@ class BrandService:
         return [_brand_to_schema(b, cat_by_id, pl_by_brand) for b in brands]
 
     def get_brand(self, tenant_schema: str, brand_id: int) -> BrandSchema:
-        brand = self.repo.get_brand_by_id(tenant_schema, brand_id)
+        brand = self.brand_repository.get_brand_by_id(tenant_schema, brand_id)
         if brand is None:
             raise HTTPException(status_code=404, detail="Brand not available")
 
@@ -48,8 +52,12 @@ class BrandService:
             [brand.brand_business_category_id] if brand.brand_business_category_id else []
         )
 
-        product_lines = self.repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
-        categories = self.repo.get_business_categories_by_ids(tenant_schema, category_ids)
+        product_lines = self.brand_repository.get_product_lines_by_brand_ids(
+            tenant_schema, brand_ids
+        )
+        categories = self.brand_repository.get_business_categories_by_ids(
+            tenant_schema, category_ids
+        )
 
         pl_by_brand: Dict[int, List[ProductLine]] = {brand.id or 0: product_lines}
         cat_by_id: Dict[int, BusinessCategory] = {c.id: c for c in categories if c.id}

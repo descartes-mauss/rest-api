@@ -34,16 +34,18 @@ def _assemble_brands(
 class CompanyService:
     """Orchestrates cross-schema data fetching and assembles the company response."""
 
-    def __init__(self, repo: CompanyRepository, brand_repo: BrandRepository) -> None:
-        self.repo = repo
-        self.brand_repo = brand_repo
+    def __init__(
+        self, company_repository: CompanyRepository, brand_repository: BrandRepository
+    ) -> None:
+        self.company_repository = company_repository
+        self.brand_repository = brand_repository
 
     def get_company(self, tenant_schema: str) -> CompanyResponse:
-        ci_client = self.repo.get_ci_client(tenant_schema.lower())
+        ci_client = self.company_repository.get_ci_client(tenant_schema.lower())
         if ci_client is None:
             raise HTTPException(status_code=404, detail="Client not found")
 
-        company_profile = self.repo.get_company_profile(ci_client.id)  # type: ignore[arg-type]
+        company_profile = self.company_repository.get_company_profile(ci_client.id)  # type: ignore[arg-type]
 
         if not company_profile:
             return CompanyResponse(
@@ -53,20 +55,22 @@ class CompanyService:
                 business_categories=[],
             )
 
-        image_uri = self.repo.get_cs_client_image(tenant_schema)
+        image_uri = self.company_repository.get_cs_client_image(tenant_schema)
 
-        brands = self.brand_repo.get_brands(tenant_schema)
+        brands = self.brand_repository.get_brands(tenant_schema)
         brand_ids = [b.id for b in brands if b.id is not None]
         category_ids = list(
             {b.brand_business_category_id for b in brands if b.brand_business_category_id}
         )
-        product_lines = self.brand_repo.get_product_lines_by_brand_ids(tenant_schema, brand_ids)
-        brand_categories = self.brand_repo.get_business_categories_by_ids(
+        product_lines = self.brand_repository.get_product_lines_by_brand_ids(
+            tenant_schema, brand_ids
+        )
+        brand_categories = self.brand_repository.get_business_categories_by_ids(
             tenant_schema, category_ids
         )
 
-        customer_segments = self.repo.get_customer_segments(tenant_schema)
-        all_business_categories = self.repo.get_all_business_categories(tenant_schema)
+        customer_segments = self.company_repository.get_customer_segments(tenant_schema)
+        all_business_categories = self.company_repository.get_all_business_categories(tenant_schema)
 
         return CompanyResponse(
             company_profile_image_uri=image_uri,
