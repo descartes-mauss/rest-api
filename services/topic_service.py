@@ -14,12 +14,9 @@ from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic
 from repositories.sow_repository import SowRepository
 from repositories.topic_repository import TopicRepository
-from services._maturity_helpers import (
-    _build_topic_context,
-    _build_trend_context,
-    _topic_to_schema,
-    _trend_to_schema,
-)
+from services.assemblers.maturity_context import _build_topic_context, _build_trend_context
+from services.assemblers.topic_assembler import _topic_to_schema
+from services.assemblers.trend_assembler import _trend_to_schema
 
 _STATUS_MAP = {
     0: "Undefined",
