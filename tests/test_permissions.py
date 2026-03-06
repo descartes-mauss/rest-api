@@ -53,7 +53,7 @@ def make_experiment() -> Experiment:
 
 def test_get_permissions_success(client: TestClient) -> None:
     class FakeRepo:
-        def get_sow(self, tenant_schema: str, sow_id: int) -> TenantSow:
+        def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> TenantSow:
             return make_sow()
 
         def get_client_tier_id(self, org_id: str) -> int:
@@ -85,7 +85,7 @@ def test_get_permissions_success(client: TestClient) -> None:
 
 def test_get_permissions_sow_not_found(client: TestClient) -> None:
     class FakeRepo:
-        def get_sow(self, tenant_schema: str, sow_id: int) -> None:
+        def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> None:
             return None
 
         def get_client_tier_id(self, org_id: str) -> int:
@@ -109,7 +109,7 @@ def test_get_permissions_sow_not_found(client: TestClient) -> None:
 
 def test_get_permissions_no_features(client: TestClient) -> None:
     class FakeRepo:
-        def get_sow(self, tenant_schema: str, sow_id: int) -> TenantSow:
+        def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> TenantSow:
             return make_sow()
 
         def get_client_tier_id(self, org_id: str) -> None:

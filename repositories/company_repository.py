@@ -3,6 +3,8 @@
 Queries span two schemas:
   - Public schema  : CIClient, Client, ClientCompanyProfile
   - Tenant schema  : BusinessCategory, CustomerSegment
+
+Brand-related queries live in BrandRepository and are injected separately.
 """
 
 from typing import List, Optional

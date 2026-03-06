@@ -17,7 +17,7 @@ class PermissionsService:
         tenant_schema: str,
         sow_id: int,
     ) -> PermissionsResponse:
-        sow = self.permissions_repository.get_sow(tenant_schema, sow_id)
+        sow = self.permissions_repository.get_sow_by_id(tenant_schema, sow_id)
         if sow is None:
             raise HTTPException(status_code=404, detail="SowModel not available")
 
