@@ -9,7 +9,7 @@ from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
 from database.tenant_models.models import Topic, Trend
 from repositories.sow_repository import SowRepository
-from services.sow_service import (
+from services._maturity_helpers import (
     _assemble_topic_schema,
     _assemble_trend_schema,
     _build_sources_map,
@@ -42,7 +42,7 @@ class TrendService:
 
         scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
         score_ids = [ms.id for ms in scores if ms.id is not None]
-        sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, score_ids)
+        sources = self.repo.get_maturity_score_sources(tenant_schema, score_ids)
         deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, [trend.trend_id]
         )
@@ -82,7 +82,7 @@ class TrendService:
 
         topic_scores = self.repo.get_maturity_scores_for_topic_ids(tenant_schema, topic_tids)
         topic_score_ids = [ms.id for ms in topic_scores if ms.id is not None]
-        topic_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, topic_score_ids)
+        topic_sources = self.repo.get_maturity_score_sources(tenant_schema, topic_score_ids)
         topic_deltas = self.repo.get_maturity_score_deltas_for_sow_topic_ids(
             tenant_schema, sow_sid, topic_id_strings
         )
@@ -91,7 +91,7 @@ class TrendService:
         # Fetch trend maturity data so each TopicSchema can embed its parent trend
         trend_scores = self.repo.get_maturity_scores_for_trend_ids(tenant_schema, [ssid])
         trend_score_ids = [ms.id for ms in trend_scores if ms.id is not None]
-        trend_sources = self.repo.get_maturity_score_sources_for_ids(tenant_schema, trend_score_ids)
+        trend_sources = self.repo.get_maturity_score_sources(tenant_schema, trend_score_ids)
         trend_deltas = self.repo.get_maturity_score_deltas_for_sow_trends(
             tenant_schema, sow_sid, [trend.trend_id]
         )

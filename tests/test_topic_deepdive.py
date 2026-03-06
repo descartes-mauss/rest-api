@@ -54,6 +54,11 @@ def make_sow(sid: int = 10, cs_sow_id: str = "sow-42") -> TenantSow:
     )
 
 
+# ---------------------------------------------------------------------------
+# Separate fakes for TopicRepository and SowRepository
+# ---------------------------------------------------------------------------
+
+
 class BaseFakeTopicRepo:
     def get_by_topic_id(self, tenant_schema: str, topic_id: str) -> Optional[Topic]:
         return None
@@ -84,8 +89,11 @@ def make_fake_s3_client(
 
 
 def test_deepdive_topic_not_found(client: TestClient) -> None:
+    class FakeTopicRepo(BaseFakeTopicRepo):
+        pass  # get_by_topic_id returns None
+
     s3 = make_fake_s3_client()
-    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(BaseFakeTopicRepo(), BaseFakeSowRepo(), s3)  # type: ignore[arg-type]
+    app.dependency_overrides[get_deepdive_service] = lambda: DeepdiveService(FakeTopicRepo(), BaseFakeSowRepo(), s3)  # type: ignore[arg-type]
 
     resp = client.get("/api/v2/topics/nonexistent/deepdive")
     assert resp.status_code == 200

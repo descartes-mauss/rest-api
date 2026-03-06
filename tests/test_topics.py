@@ -20,6 +20,31 @@ from main import app
 from routes.topic_router import get_topic_service
 from services.topic_service import TopicService
 
+# ---------------------------------------------------------------------------
+# BaseFakeSowRepo — empty defaults for SowRepository cross-domain methods
+# ---------------------------------------------------------------------------
+
+
+class BaseFakeSowRepo:
+    def get_maturity_score_sources(
+        self, tenant_schema: str, score_ids: List[int]
+    ) -> List[MaturityScoreSource]:
+        return []
+
+    def get_trends_by_ssids(self, tenant_schema: str, ssids: List[int]) -> List[Trend]:
+        return []
+
+    def get_maturity_scores_for_trend_ids(
+        self, tenant_schema: str, ssids: List[int]
+    ) -> List[MaturityScore]:
+        return []
+
+    def get_maturity_score_deltas_for_sow_trends(
+        self, tenant_schema: str, sow_sid: int, trend_id_strings: List[str]
+    ) -> List[MaturityScoreDelta]:
+        return []
+
+
 NOW = datetime.datetime.now(datetime.UTC)
 
 
@@ -105,26 +130,6 @@ class BaseFakeRepo:
 
     def get_maturity_score_deltas_for_topic(
         self, tenant_schema: str, sow_sid: int, topic_id: str
-    ) -> List[MaturityScoreDelta]:
-        return []
-
-
-class BaseFakeSowRepo:
-    """Default no-op implementations for SowRepository methods used by TopicService."""
-
-    def get_maturity_score_sources_for_ids(
-        self, tenant_schema: str, score_ids: List[int]
-    ) -> List[MaturityScoreSource]:
-        return []
-
-    def get_trend_by_ssid(self, tenant_schema: str, ssid: int) -> Optional[Trend]:
-        return None
-
-    def get_maturity_scores_for_trend(self, tenant_schema: str, ssid: int) -> List[MaturityScore]:
-        return []
-
-    def get_maturity_score_deltas_for_trend(
-        self, tenant_schema: str, sow_sid: int, trend_id: str
     ) -> List[MaturityScoreDelta]:
         return []
 

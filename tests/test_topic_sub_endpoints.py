@@ -10,6 +10,11 @@ from main import app
 from routes.topic_router import get_topic_service
 from services.topic_service import TopicService
 
+
+class BaseFakeSowRepo:
+    pass  # no SowRepository methods needed by these tests
+
+
 NOW = datetime.datetime.now(datetime.UTC)
 
 
@@ -86,12 +91,8 @@ def make_topic2driver(
 
 
 # ---------------------------------------------------------------------------
-# BaseFakeRepo / BaseFakeSowRepo — all repo methods return empty defaults
+# BaseFakeRepo — all repo methods return empty defaults
 # ---------------------------------------------------------------------------
-
-
-class BaseFakeSowRepo:
-    pass
 
 
 class BaseFakeRepo:

@@ -142,7 +142,7 @@ class BaseFakeRepo:
     ) -> List[MaturityScore]:
         return []
 
-    def get_maturity_score_sources_for_ids(
+    def get_maturity_score_sources(
         self, tenant_schema: str, score_ids: List[int]
     ) -> List[MaturityScoreSource]:
         return []
@@ -193,7 +193,7 @@ def test_get_trend_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score]
 
-        def get_maturity_score_sources_for_ids(
+        def get_maturity_score_sources(
             self, tenant_schema: str, score_ids: List[int]
         ) -> List[MaturityScoreSource]:
             return [source]

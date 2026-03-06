@@ -36,6 +36,7 @@ def get_topic_repository() -> TopicRepository:
 
 
 def get_sow_repository() -> SowRepository:
+    """Create a `SowRepository` using the real DB provider."""
     from database import manager as db_manager
 
     return SowRepository(db_manager.db)
