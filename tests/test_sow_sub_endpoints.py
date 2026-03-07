@@ -16,8 +16,9 @@ from database.tenant_models.models import (
 )
 from jwt_validator import validate_jwt
 from main import app
-from routes.sow_router import get_sow_service
+from routes.sow_router import get_sow_service, get_sub_resource_service
 from services.sow_service import SowService
+from services.sow_sub_resource_service import SowSubResourceService
 
 
 @pytest.fixture
@@ -225,7 +226,10 @@ def test_get_sow_shifts_success(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
+
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/shifts")
     assert resp.status_code == 200
@@ -304,7 +308,10 @@ def test_get_sow_shifts_not_found(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
+
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/shifts")
     assert resp.status_code == 404
@@ -367,7 +374,10 @@ def test_get_sow_shifts_empty_trends(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
+
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/shifts")
     assert resp.status_code == 200
@@ -441,6 +451,9 @@ def _full_fake_repo_for_drivers(
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
+
     return FakeRepo()
 
 
@@ -450,7 +463,7 @@ def test_get_sow_drivers_success(client: TestClient) -> None:
     pub_sow = make_public_sow()
     geo = make_geography()
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(
         _full_fake_repo_for_drivers(sow, [driver], {1: 3}, [(pub_sow, geo)])
     )
 
@@ -519,7 +532,10 @@ def test_get_sow_drivers_not_found(client: TestClient) -> None:
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
+
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/drivers")
     assert resp.status_code == 404
@@ -533,7 +549,7 @@ def test_get_sow_drivers_sorted_by_name(client: TestClient) -> None:
     driver_a = make_driver(did=1)
     driver_a.driver_name = "Alpha Driver"
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(
         _full_fake_repo_for_drivers(sow, [driver_b, driver_a], {1: 0, 2: 0})
     )
 
@@ -672,6 +688,9 @@ def test_get_sow_versions_not_found(client: TestClient) -> None:
 
         def get_sow_versions(self, tenant_schema: str, cs_sow_id: str) -> List[TenantSow]:
             return []
+
+        def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+            return None
 
     app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
 

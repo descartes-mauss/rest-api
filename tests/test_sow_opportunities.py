@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 from database.public_models.models import Geography, PublicSow
 from database.tenant_models.models import (
     Driver,
+    Insight,
+    InsightSource,
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
@@ -19,8 +21,8 @@ from database.tenant_models.models import (
 )
 from jwt_validator import validate_jwt
 from main import app
-from routes.sow_router import get_sow_service
-from services.sow_service import SowService
+from routes.sow_router import get_sub_resource_service
+from services.sow_sub_resource_service import SowSubResourceService
 
 NOW = datetime.datetime.now(datetime.UTC)
 
@@ -238,6 +240,44 @@ class BaseFakeRepo:
     def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
         return []
 
+    def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+        return None
+
+    def get_topics_for_sow(
+        self, tenant_schema: str, sow_sid: int, name_order: Optional[str] = None
+    ) -> List[Topic]:
+        return []
+
+    def get_insights_for_cs_sow_id(
+        self, tenant_schema: str, cs_sow_id: str, offset: int, limit: int
+    ) -> Tuple[int, List[Insight]]:
+        return 0, []
+
+    def get_insights_filtered(
+        self,
+        tenant_schema: str,
+        cs_sow_id: str,
+        entity_ids: List[str],
+        offset: int,
+        limit: int,
+    ) -> Tuple[int, List[Insight]]:
+        return 0, []
+
+    def get_insight_sources_for_insight_ids(
+        self, tenant_schema: str, insight_ids: List[int]
+    ) -> List[Tuple[InsightSource, int]]:
+        return []
+
+    def get_topics_by_topic_str_ids(
+        self, tenant_schema: str, sow_sid: int, topic_ids: List[str]
+    ) -> List[Topic]:
+        return []
+
+    def get_trends_by_trend_str_ids(
+        self, tenant_schema: str, sow_sid: int, trend_ids: List[str]
+    ) -> List[Trend]:
+        return []
+
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -299,7 +339,7 @@ def test_get_sow_opportunities_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [tr_score]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200
@@ -333,7 +373,7 @@ def test_get_sow_opportunities_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/opportunities")
     assert resp.status_code == 404
@@ -347,7 +387,7 @@ def test_get_sow_opportunities_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200
@@ -366,7 +406,7 @@ def test_get_sow_opportunities_no_topics(client: TestClient) -> None:
         def get_opportunities_for_sow(self, tenant_schema: str, sow_sid: int) -> List[Opportunity]:
             return [opp]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/opportunities")
     assert resp.status_code == 200

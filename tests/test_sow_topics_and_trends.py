@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 from database.public_models.models import Geography, PublicSow
 from database.tenant_models.models import (
     Driver,
+    Insight,
+    InsightSource,
     MaturityScore,
     MaturityScoreDelta,
     MaturityScoreSource,
@@ -19,8 +21,8 @@ from database.tenant_models.models import (
 )
 from jwt_validator import validate_jwt
 from main import app
-from routes.sow_router import get_sow_service
-from services.sow_service import SowService
+from routes.sow_router import get_sub_resource_service
+from services.sow_sub_resource_service import SowSubResourceService
 
 NOW = datetime.datetime.now(datetime.UTC)
 
@@ -236,6 +238,39 @@ class BaseFakeRepo:
     def get_trends_by_ssids(self, tenant_schema: str, trend_ssids: List[int]) -> List[Trend]:
         return []
 
+    def get_trend_by_trend_id(self, tenant_schema: str, trend_id: str) -> Optional[Trend]:
+        return None
+
+    def get_insights_for_cs_sow_id(
+        self, tenant_schema: str, cs_sow_id: str, offset: int, limit: int
+    ) -> Tuple[int, List[Insight]]:
+        return 0, []
+
+    def get_insights_filtered(
+        self,
+        tenant_schema: str,
+        cs_sow_id: str,
+        entity_ids: List[str],
+        offset: int,
+        limit: int,
+    ) -> Tuple[int, List[Insight]]:
+        return 0, []
+
+    def get_insight_sources_for_insight_ids(
+        self, tenant_schema: str, insight_ids: List[int]
+    ) -> List[Tuple[InsightSource, int]]:
+        return []
+
+    def get_topics_by_topic_str_ids(
+        self, tenant_schema: str, sow_sid: int, topic_ids: List[str]
+    ) -> List[Topic]:
+        return []
+
+    def get_trends_by_trend_str_ids(
+        self, tenant_schema: str, sow_sid: int, trend_ids: List[str]
+    ) -> List[Trend]:
+        return []
+
 
 # ---------------------------------------------------------------------------
 # Topics tests
@@ -289,7 +324,7 @@ def test_get_sow_topics_success(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [tr_score]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics")
     assert resp.status_code == 200
@@ -317,7 +352,7 @@ def test_get_sow_topics_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/topics")
     assert resp.status_code == 404
@@ -331,7 +366,7 @@ def test_get_sow_topics_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics")
     assert resp.status_code == 200
@@ -353,7 +388,7 @@ def test_get_sow_topics_filter_new(client: TestClient) -> None:
         ) -> List[Topic]:
             return [topic_new, topic_old]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?maturity_level=New")
     assert resp.status_code == 200
@@ -388,7 +423,7 @@ def test_get_sow_topics_filter_by_threshold(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score_emerging, score_mature]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?maturity_level=Emerging")
     assert resp.status_code == 200
@@ -418,7 +453,7 @@ def test_get_sow_topics_sort_name_asc(client: TestClient) -> None:
                 result.sort(key=lambda t: t.topic_name.casefold(), reverse=(name_order == "desc"))
             return result
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/topics?sort=name&order=asc")
     assert resp.status_code == 200
@@ -472,7 +507,7 @@ def test_get_sow_trends_success(client: TestClient) -> None:
         ) -> List[Topic2Driver]:
             return [t2d]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -496,7 +531,7 @@ def test_get_sow_trends_not_found(client: TestClient) -> None:
     class FakeRepo(BaseFakeRepo):
         pass  # get_sow_by_id returns None
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/999/trends")
     assert resp.status_code == 404
@@ -510,7 +545,7 @@ def test_get_sow_trends_empty(client: TestClient) -> None:
         def get_sow_by_id(self, tenant_schema: str, sow_id: int) -> Optional[TenantSow]:
             return sow
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -532,7 +567,7 @@ def test_get_sow_trends_filter_new(client: TestClient) -> None:
         ) -> List[Trend]:
             return [trend_new, trend_old]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends?maturity_level=New")
     assert resp.status_code == 200
@@ -569,7 +604,7 @@ def test_get_sow_trends_driver_count(client: TestClient) -> None:
         ) -> List[Topic2Driver]:
             return [t2d_shared_1, t2d_shared_2, t2d_unique]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends")
     assert resp.status_code == 200
@@ -598,7 +633,7 @@ def test_get_sow_trends_sort_maturity_desc(client: TestClient) -> None:
         ) -> List[MaturityScore]:
             return [score_low, score_high]
 
-    app.dependency_overrides[get_sow_service] = lambda: SowService(FakeRepo())
+    app.dependency_overrides[get_sub_resource_service] = lambda: SowSubResourceService(FakeRepo())
 
     resp = client.get("/api/v2/sows/1/trends?sort=maturity&order=desc")
     assert resp.status_code == 200
