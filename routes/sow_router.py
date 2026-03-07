@@ -13,7 +13,9 @@ from database.schemas.topic import TopicSchema
 from database.schemas.trend import TrendSchema
 from jwt_validator import get_tenant_schema
 from repositories.sow_repository import SowRepository
+from services.foresight_service import ForesightService
 from services.sow_service import SowService
+from services.sow_sub_resource_service import SowSubResourceService
 
 _VALID_MATURITY_FILTERS = frozenset({"Emerging", "Growing", "Mature", "New", "All"})
 
@@ -32,6 +34,18 @@ def get_sow_service(
     return SowService(repo)
 
 
+def get_sub_resource_service(
+    repo: SowRepository = Depends(get_sow_repository),
+) -> SowSubResourceService:
+    return SowSubResourceService(repo)
+
+
+def get_foresight_service(
+    repo: SowRepository = Depends(get_sow_repository),
+) -> ForesightService:
+    return ForesightService(repo)
+
+
 @sow_router.get("/sows", response_model=List[SowSchema])
 def get_sows(
     tenant_schema: str = Depends(get_tenant_schema),
@@ -46,7 +60,7 @@ def get_sows(
 def get_sow_opportunities(
     sow_id: int,
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: SowSubResourceService = Depends(get_sub_resource_service),
 ) -> JSONResponse:
     """Return all opportunities (with nested topics) for the given SOW."""
     result = service.get_opportunities(tenant_schema, sow_id)
@@ -57,7 +71,7 @@ def get_sow_opportunities(
 def get_sow_shifts(
     sow_id: int,
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: SowSubResourceService = Depends(get_sub_resource_service),
 ) -> JSONResponse:
     """Return all shifts (with nested trends) for the given SOW."""
     result = service.get_shifts(tenant_schema, sow_id)
@@ -70,7 +84,7 @@ def get_sow_drivers(
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: SowSubResourceService = Depends(get_sub_resource_service),
 ) -> JSONResponse:
     """Return all drivers for the given SOW, optionally sorted by name."""
     result = service.get_drivers(tenant_schema, sow_id, sort=sort, order=order)
@@ -84,7 +98,7 @@ def get_sow_topics(
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: SowSubResourceService = Depends(get_sub_resource_service),
 ) -> JSONResponse:
     """Return all topics for the given SOW, with optional maturity filtering and sorting."""
     effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
@@ -99,7 +113,7 @@ def get_sow_trends(
     sort: Optional[str] = Query(default=None),
     order: Optional[str] = Query(default=None),
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: SowSubResourceService = Depends(get_sub_resource_service),
 ) -> JSONResponse:
     """Return all trends for the given SOW, with optional maturity filtering and sorting."""
     effective_maturity = maturity_level if maturity_level in _VALID_MATURITY_FILTERS else "All"
@@ -124,7 +138,7 @@ def get_sow_foresight(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=8, le=8),
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: ForesightService = Depends(get_foresight_service),
 ) -> JSONResponse:
     """Return a paginated list of foresight insights for the given SOW."""
     result = service.get_foresight(tenant_schema, sow_id, page=page, limit=limit)
@@ -138,7 +152,7 @@ def search_sow_foresight(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=8, le=8),
     tenant_schema: str = Depends(get_tenant_schema),
-    service: SowService = Depends(get_sow_service),
+    service: ForesightService = Depends(get_foresight_service),
 ) -> JSONResponse:
     """Return a filtered paginated list of foresight insights, optionally by topic/trend IDs."""
     result = service.get_foresight_search(
